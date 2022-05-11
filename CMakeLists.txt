@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 14)
 
 add_executable(RobotsGame test_dir/main.cpp)
 add_executable(Server app_server/main.c)
+add_executable(Client app_client/main.c)
 
 set(SFML_STATIC_LIBRARIES TRUE)
 set(SFML_DIR C:/SFML/lib/cmake/SFML)
