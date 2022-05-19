@@ -13,3 +13,5 @@ find_package(SFML COMPONENTS system window audio graphics network REQUIRED)
 
 include_directories(C:/SFML/include)
 target_link_libraries(RobotsGame sfml-system sfml-graphics sfml-audio sfml-audio)
+target_link_libraries(Server ws2_32)
+target_link_libraries(Client ws2_32)
