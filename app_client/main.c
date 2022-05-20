@@ -21,6 +21,7 @@ SOCKET connectToServer() {
     if (connect(client, (SOCKADDR *) &server, sizeof(server)) == SOCKET_ERROR) {
         printf("CANNOT CONNECT TO SERVER");
         closesocket(client);
+        WSACleanup();
         exit(2);
     } printf("Connected to server\n");
 
@@ -63,6 +64,7 @@ int main() {
 
     // закрыть сокет
     closesocket(client);
+    WSACleanup();
     printf("Client stopped\n");
     getchar();
     return 0;

@@ -57,7 +57,7 @@ int CreateServer(){
             printf("ERROR RECEIVE MESSAGE");
             return 4;
         } printf("massage received:\n\t%s\n", msg);
-        closeFlag = strcmp(msg, "CLOSE_SERVER") == 0;
+        closeFlag = strcmp(msg, "CLOSE_SERVER\n") == 0;
 
         // обработать сообщение
         processData(msg);
@@ -71,6 +71,7 @@ int CreateServer(){
 
     printf("Server stopped\n");
     closesocket(server);
+    WSACleanup();
     getchar();
     return 0;
 }
