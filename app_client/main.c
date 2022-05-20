@@ -15,13 +15,14 @@ SOCKET connectToServer() {
     SOCKADDR_IN server;
     server.sin_family = AF_INET;
     server.sin_port = htons(2205); // такой же порт как на сервере
-    server.sin_addr.S_un.S_addr = inet_addr("127.0.0.1"); // специальный look-up адрес
+    server.sin_addr.S_un.S_addr = inet_addr("192.168.244.105"); // специальный look-up адрес
 
     // инициализация соединения с сервером
     if (connect(client, (SOCKADDR *) &server, sizeof(server)) == SOCKET_ERROR) {
-        printf("CANNOT CONNECT TO SERVER");
+        printf("CANNOT CONNECT TO SERVER: %d", WSAGetLastError());
         closesocket(client);
         WSACleanup();
+        getchar();
         exit(2);
     } printf("Connected to server\n");
 
