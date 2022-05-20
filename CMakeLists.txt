@@ -3,7 +3,7 @@ project(RobotsGame)
 
 set(CMAKE_CXX_STANDARD 14)
 
-add_executable(RobotsGame test_dir/main.cpp)
+add_executable(RobotsGame test_dir/main.cpp test_dir/test1.c)
 add_executable(Server app_server/main.c)
 add_executable(Client app_client/main.c)
 

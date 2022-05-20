@@ -1,6 +1,15 @@
 #include <stdio.h>
 #include <winsock2.h>
 
+void processData(char *data) {
+    for (int i = 0, len = (int) strlen(data); i < len; ++i) {
+        if ('A' <= data[i] && data[i] <= 'Z')
+            data[i] += 'a' - 'A';
+        else if ('a' <= data[i] && data[i] <= 'z')
+            data[i] -= 'a' - 'A';
+    }
+}
+
 int CreateServer(){
     SOCKET server, client;
     SOCKADDR_IN serverAddr, clientAddr;
@@ -30,20 +39,34 @@ int CreateServer(){
     } printf("Server started to listen\n");
 
     // бесконечный цикл - сервер работает и готов устанавливать соединения с клиентами
-    while (1) {
-        int size = sizeof(clientAddr);
+    int closeFlag = 0;
+    while (!closeFlag) {
+        int size = sizeof(clientAddr), rc;
+        char msg[1025];
+
         // захват клиента и установление соединения
         client = accept(server, (SOCKADDR *) &clientAddr, &size);
         if (client == INVALID_SOCKET) {
-            printf("ERROR ACCEPT CLIENT\n");
+            printf("ERROR ACCEPT CLIENT");
             continue; // попробуем снова установить соединение
-        }
-        printf("Client accepted\n");
+        } printf("Client accepted\n");
 
-        ///
-        /// here can send and receive data to/from client
-        ///
-        break;
+        //  принять сообщение от клиента
+        rc = recv(client, msg, 1025, 0);
+        if (!rc || rc == SOCKET_ERROR) {
+            printf("ERROR RECEIVE MESSAGE");
+            return 4;
+        } printf("massage received:\n\t%s\n", msg);
+        closeFlag = strcmp(msg, "CLOSE_SERVER") == 0;
+
+        // обработать сообщение
+        processData(msg);
+
+        // послать обратно
+        if (send(client, msg, (int) strlen(msg) + 1, 0) == SOCKET_ERROR) {
+            printf("CANNOT SEND MESSAGE BACK");
+            return 5;
+        } printf("message sent back\n");
     }
 
     printf("Server stopped\n");

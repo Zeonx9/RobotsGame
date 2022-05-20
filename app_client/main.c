@@ -33,12 +33,35 @@ int main() {
     // подключение библиотеки ws2_32.lib
     if (WSAStartup(MAKEWORD(2, 2), &wsd)) {
         printf("CANNOT CONNECT TO THE LIB");
-        return 1;
+        return 3;
     } printf("Connected to the lib\n");
 
     // запуск сервера
     SOCKET client = connectToServer();
 
+    char msg[1025] = "";
+    printf(" >> Enter message to be processed on server: ");
+    fgets(msg, 1024, stdin); // получить сообщение от пользователя
+
+    // отправить сообщение на север
+    if (send(client, msg, (int) strlen(msg) + 1, 0) == SOCKET_ERROR) {
+        printf("CANNOT SEND MASSAGE");
+        closesocket(client);
+        return 4;
+    } printf("message sent\n");
+
+    // получить ответ от сервера
+    int rc = SOCKET_ERROR;
+    while (rc == SOCKET_ERROR) {
+        rc = recv(client, msg, 1025, 0);
+        if (!rc || rc == WSAECONNRESET) {
+            printf("CONNECTION CLOSED\n");
+            closesocket(client);
+            return 5;
+        }
+    } printf("processed message from server:\n\t%s\n", msg);
+
+    // закрыть сокет
     closesocket(client);
     printf("Client stopped\n");
     getchar();
