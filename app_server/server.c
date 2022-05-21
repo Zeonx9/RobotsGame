@@ -1,6 +1,24 @@
 #include "server.h"
 
-SOCKET createServer() {
+void addClient(ClientsList * list, SOCKET s, SOCKADDR_IN a, pthread_t t) {
+    ++list->count;
+    // создать новый узел для клиента
+    ClientNode * new = malloc(sizeof(ClientNode));
+    new->data.sock = s, new->data.addr = a, new->data.tid = t;
+    new->next = NULL;
+
+    // если список пуст, положить туда новый узел
+    if (!list->self) {
+        list->self = new;
+        return;
+    }
+
+    // положить узел в начало
+    new->next = list->self;
+    list->self = new;
+}
+
+SOCKET createServer(CHandlerDta *dta) {
     SOCKET server;
     SOCKADDR_IN serverAddr;
 
@@ -29,16 +47,18 @@ SOCKET createServer() {
     }
 
     // создать поток обрабатывающий новых клиентов
+    dta->server = server;
     pthread_t comingClientsTid;
-    pthread_create(&comingClientsTid, NULL, handleNewClients, (void *) server);
+    pthread_create(&comingClientsTid, NULL, handleNewClients, (void *) dta);
     pthread_detach(comingClientsTid);
 
     printf(">> Server started\n");
     return server;
 }
 
-void * handleNewClients(void * servSock) {
-    SOCKET client, server = (SOCKET) servSock;
+void * handleNewClients(void * dta) {
+    CHandlerDta * chd = (CHandlerDta *) dta;
+    SOCKET client, server = chd->server;
     SOCKADDR_IN clientAddr;
 
     while(1) {
@@ -56,6 +76,9 @@ void * handleNewClients(void * servSock) {
         pthread_t newTreadId;
         pthread_create(&newTreadId, NULL, clientRoutine, (void *) client);
         pthread_detach(newTreadId);
+
+        // добавить нового клиента в список сервера
+        addClient(chd->list, client, clientAddr, newTreadId);
     }
 }
 
