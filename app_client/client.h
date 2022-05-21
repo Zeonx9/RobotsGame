@@ -4,6 +4,12 @@
 #include <stdio.h>
 #include <winsock2.h>
 
+typedef struct {
+    SOCKET sock;
+    int connected;
+    char *buf;
+} ClientState;
+
 // функция создает сокет и соединяет его с сервером
 SOCKET connectToServer();
 
