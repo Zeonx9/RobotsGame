@@ -8,13 +8,32 @@ int main() {
         return 1;
     }
 
+    // создать список клиентов;
+    ClientsList list = {};
+    struct client_handler_data * chd = malloc(sizeof(struct client_handler_data));
+    chd->list = &list;
+
     // запуск сервера
-    SOCKET server = createServer();
+    SOCKET server = createServer(chd);
     if (server == INVALID_SOCKET)
         return -1;
 
     // цикл обработки команд
-    for  (char cmd[20] = ""; strcmp(cmd, "halt") != 0; scanf("#%s", cmd));
+    char cmd[20] = "";
+    while(strcmp(cmd, "stop") != 0) {
+        // выводит количество подключенных клиентов
+        if (strcmp(cmd, "count") == 0){
+            printf("now %d clients connected\n", list.count);
+        }
+        // выводит весь список клиентов
+        if (strcmp(cmd, "show") == 0) {
+            for (ClientNode * this = list.self; this; this = this->next) {
+                printf("-> Client <%s> with socket %llu at thread %llu",
+                       inet_ntoa(this->data.addr.sin_addr), this->data.sock, this->data.tid);
+            }
+        }
+        scanf("%s", cmd);
+    }
 
     // закрытие сервера
     closesocket(server);
