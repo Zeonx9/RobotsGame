@@ -57,7 +57,4 @@ void * clientAcceptorRoutine(void * servSock);
 // точка входа в поток создающийся для каждого нового клиента
 void * clientRoutine(void * dta);
 
-// обработка сообщений; только для тестов, потом будет заменена или удалена
-void processData(char * data);
-
 #endif //ROBOTSGAME_SERVER_H

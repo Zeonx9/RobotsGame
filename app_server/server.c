@@ -1,4 +1,5 @@
 #include "server.h"
+#include "requests.h"
 
 void addClient(ClientsList * list, SOCKET s, SOCKADDR_IN a, pthread_t t) {
     ++list->count;
@@ -128,7 +129,7 @@ void * clientRoutine(void * dta) {
     pthread_mutex_lock(&(shd->mutex));
     SOCKET client = shd->sock;
     pthread_mutex_unlock(&(shd->mutex));
-    char msg[1025];
+    char msg[1025], respond[1025];
 
     // цикл обработки диалога с клиентом
     while (!shd->shutdown) {
@@ -139,18 +140,12 @@ void * clientRoutine(void * dta) {
             break;
         }
 
-        // выход из цикла по команде
-        if (strcmp(msg, "EXIT\n") == 0) {
-            printf(">> client disconnecting");
-            break;
-        }
-
         // распечатать и обработать сообщение
-        printf("@ massage received form %llu:\n\t%s\n", client, msg);
-        processData(msg);
+        printf("@@ %llu: %s\n", client, msg);
+        handleRequest(msg, respond);
 
         // послать обратно
-        if (send(client, msg, (int) strlen(msg) + 1, 0) == SOCKET_ERROR) {
+        if (send(client, respond, (int) strlen(respond) + 1, 0) == SOCKET_ERROR) {
             printf("!! CANNOT SEND MESSAGE BACK");
             break;
         }
@@ -160,13 +155,4 @@ void * clientRoutine(void * dta) {
     ClientNode *node = popClient(shd->list, client);
     free(node);
     pthread_mutex_unlock(&(shd->mutex));
-}
-
-void processData(char *data) {
-    for (int i = 0, len = (int) strlen(data); i < len; ++i) {
-        if ('A' <= data[i] && data[i] <= 'Z')
-            data[i] += 'a' - 'A';
-        else if ('a' <= data[i] && data[i] <= 'z')
-            data[i] -= 'a' - 'A';
-    }
 }
