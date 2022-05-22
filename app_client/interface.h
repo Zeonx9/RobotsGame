@@ -4,8 +4,19 @@
 #include "client.h"
 #include <SFML/Graphics.hpp>
 
-void createConnectingApp(ClientState *state, sf::RenderWindow &window);
+typedef enum activities {
+    mainMenu, logIn, registration, gameLobby, play, closeApp, closeApproved
+} Activities;
 
-void createMenuApp(sf::RenderWindow &window);
+// структура для связи потока связи с сервером с интерфейсом
+typedef struct shared_state {
+    pthread_mutex_t mutex;
+    int connected; // подключен ли клиент к серверу?
+    SOCKET sock;   // сокет подключения
+    int logged;    // выполнен ли вход?
+    Activities currentActivity; // текущая активность
+} SharedState;
+
+void createMenuApp(sf::RenderWindow &window, SharedState * shs);
 
 #endif //ROBOTSGAME_INTERFACE_H

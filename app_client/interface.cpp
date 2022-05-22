@@ -2,51 +2,64 @@
 #include "client.h"
 #include <pthread.h>
 
-void * routine(void * param) {
-    auto state = (ClientState *) param;
+// поток связи с сервером
+void * requestsRoutine(void * dta) {
+    SharedState * shs = (SharedState *) dta;
 
-    sf::Clock clk;
-    while (state->sock == INVALID_SOCKET) {
-        state->sock = connectToServer();
-        while(clk.getElapsedTime().asSeconds() < 5);
-        clk.restart();
-    }
-    state->connected++;
-
-    // начать цикл для обработки запросов
-    for(int res = 0; !res; ) {
-        printf("@ Enter message to be processed on server : ");
-        fgets(state->buf, 1024, stdin); // получить сообщение от пользователя
-
-        // обработать запрос
-        res = serverSession(state->sock, state->buf);
-        if (res == 1)
+    while (1) {
+        pthread_mutex_lock(&(shs->mutex));
+        shs->sock = connectToServer();
+        pthread_mutex_unlock(&(shs->mutex));
+        if (shs->sock != INVALID_SOCKET)
             break;
+        printf("try again?\n");
+        getchar();
+    }
+    shs->connected++;
 
-        printf("@ processed message from server:\n\t%s\n", state->buf);
+    // начать цикл для обработки запросов, пока не закроют приложение
+    char bufIn[1025] = "", bufOut[1025] = "";
+    while(shs->currentActivity != closeApp){
+        // логин на сервер
+        if (shs->currentActivity == logIn || shs->currentActivity == registration) {
+            char login[20], password[20];
+            printf("enter your login:");
+            scanf("%s", login);
+            printf("enter your password:");
+            scanf("%s", password);
+            sprintf(bufIn, "%c %s %s", (shs->currentActivity == logIn ? 'A' : 'B'), login, password);
+
+            serverSession(shs->sock, bufIn, bufOut);
+            printf("<<<%s\n", bufOut);
+            //TODO эта строка должна быть в соответствующей активности
+            shs->currentActivity = mainMenu;
+        }
     }
 
     // закрыть сокет
-    closesocket(state->sock);
-    printf(">> Client stopped\n");
+    pthread_mutex_lock(&(shs->mutex));
+    closesocket(shs->sock);
+    shs->connected = 0;
+    shs->currentActivity = closeApproved;
+    pthread_mutex_unlock(&(shs->mutex));
 
-    state->connected = 0;
+    printf(">> Client stopped\n");
     return (void *) 0;
 }
 
 // пространство имен sfml
 using namespace sf;
 
-void createMenuApp(RenderWindow &window) {
+void createMenuApp(RenderWindow &window, SharedState * shs) {
     Texture texture;
-    texture.loadFromFile("../app_client/src/sky_bg.jpg");
+    texture.loadFromFile("../app_client/src/factory_bg.jpg");
 
     Vector2u txSize = texture.getSize();
     Vector2u winSize = window.getSize();
 
     Sprite sprite;
     sprite.setTexture(texture);
-    float scaling = std::max((float) winSize.x / txSize.x, (float) winSize.y / txSize.y);
+    float scaling = std::max((float) winSize.x / (float) txSize.x, (float) winSize.y / (float) txSize.y);
     sprite.scale(scaling, scaling);
 
     Font font1, font2;
@@ -62,15 +75,20 @@ void createMenuApp(RenderWindow &window) {
 
     button1.setFillColor(Color(10, 10, 10));
     button1.setPosition(330, 330);
+    button1.setStyle(Text::Bold);
 
     button2.setFillColor(Color(10, 10, 10));
     button2.setPosition(360, 380);
+    button2.setStyle(Text::Bold);
 
 
     while (window.isOpen()) {
         Event event{};
         while (window.pollEvent(event)) {
             if (event.type == Event::Closed) {
+                pthread_mutex_lock(&(shs->mutex));
+                shs->currentActivity = closeApp; // сигнал для закрытия потока связи с сервером
+                pthread_mutex_unlock(&(shs->mutex));
                 window.close();
             }
             if (event.type == Event::MouseMoved) {
@@ -92,6 +110,14 @@ void createMenuApp(RenderWindow &window) {
                 }
                 // printf("mouse %d, %d\na", event.mouseMove.x, event.mouseMove.y);
             }
+            if (event.type == Event::MouseButtonPressed &&
+                330 < event.mouseButton.x && event.mouseButton.x < 460 &&
+                330 < event.mouseButton.y && event.mouseButton.y < 360) {
+                printf("clicked login\n");
+                pthread_mutex_lock(&(shs->mutex));
+                shs->currentActivity = registration;
+                pthread_mutex_unlock(&(shs->mutex));
+            }
         }
 
         window.clear();
@@ -99,40 +125,6 @@ void createMenuApp(RenderWindow &window) {
         window.draw(header);
         window.draw(button1);
         window.draw(button2);
-        window.display();
-    }
-}
-
-void createConnectingApp(ClientState *state, RenderWindow &window) {
-    // настройка шрифта и текста для стадии соединения
-    Font font;
-    font.loadFromFile("../app_client/src/arial.ttf");
-
-    Text text1("", font, 20);
-    text1.setFillColor(Color(200, 200, 200));
-    text1.setPosition(300, 150);
-    Text text2("", font, 20);
-    text2.setFillColor(Color(150, 20, 180));
-    text2.setPosition(300, 300);
-
-    // обработка окна приложения в цикле
-    while (window.isOpen()) {
-        Event event{};
-        while (window.pollEvent(event)) {
-            if (event.type == Event::Closed) {
-                window.close();
-            }
-        }
-
-        window.clear(Color(40, 40, 40));
-        text1.setString(state->connected ? "You are connected!" : "Cannot connect to server :( " );
-        window.draw(text1);
-
-        if(state->connected) {
-            text2.setString(state->buf);
-            window.draw(text2);
-        }
-
         window.display();
     }
 }
@@ -146,13 +138,12 @@ int main() {
     }
 
     // выделить память для объекта связи с потоком работающим с сетью
-    auto cs = (ClientState *) malloc(sizeof(ClientState));
-    cs->sock = INVALID_SOCKET; cs->connected = 0;
-    cs->buf = (char *) calloc(1025, sizeof(char));
+    SharedState * shs = (SharedState *) calloc(1, sizeof(SharedState));
+    pthread_mutex_init(&(shs->mutex), NULL);
 
     // создать поток для работы с сетью
     pthread_t tid;
-    pthread_create(&tid, NULL, routine, cs);
+    pthread_create(&tid, NULL, requestsRoutine, (void *) shs);
     pthread_detach(tid);
 
     // создать окно
@@ -164,11 +155,13 @@ int main() {
     window.setIcon(icon.getSize().x, icon.getSize().y, icon.getPixelsPtr());
 
     // начать рисовать интерфейс
-    createConnectingApp(cs, window);
-//    createMenuApp(window);
+    createMenuApp(window, shs);
+
+    // ждать, пока поток связи не закроется
+    while(shs->currentActivity != closeApproved);
 
     // очистить память при выходе из приложения
-    free(cs->buf);
-    free(cs);
+    pthread_mutex_destroy(&(shs->mutex));
+    free(shs);
     return 0;
 }
