@@ -26,7 +26,7 @@ typedef struct list_clients_ {
 // упаковка нужных аргументов для потока создания клиентов
 typedef struct client_handler_data {
     ClientsList *list;
-    SOCKET server;
+    SOCKET sock;
 } CHandlerDta;
 
 // = функции =
@@ -36,16 +36,16 @@ typedef struct client_handler_data {
 void addClient(ClientsList * list, SOCKET s, SOCKADDR_IN a, pthread_t t);
 
 // функция удаления + возврат
-ClientNode popClient(ClientsList * list, pthread_t id);
+ClientNode * popClient(ClientsList * list, SOCKET s);
 
 // функция запуска сервера (create -> bind -> listen)
 SOCKET createServer(CHandlerDta *dta);
 
 //  точка входа в поток обработки присоединяющихся клиентов
-void * handleNewClients(void * servSock);
+void * clientAcceptorRoutine(void * servSock);
 
 // точка входа в поток создающийся для каждого нового клиента
-void * clientRoutine(void * clientSock);
+void * clientRoutine(void * dta);
 
 // обработка сообщений; только для тестов, потом будет заменена или удалена
 void processData(char *data);

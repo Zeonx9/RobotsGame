@@ -18,6 +18,29 @@ void addClient(ClientsList * list, SOCKET s, SOCKADDR_IN a, pthread_t t) {
     list->self = new;
 }
 
+ClientNode * popClient(ClientsList * list, SOCKET s) {
+    --list->count;
+
+    if (list->self->data.sock == s) {
+        ClientNode *node = list->self;
+        list->self = list->self->next;
+        node->next = NULL;
+        return node;
+    }
+
+    for (ClientNode * prev = list->self, *this = prev->next; this; prev = this, this = prev->next) {
+        if (this->data.sock == s) {
+            prev->next = this->next;
+            this->next = NULL;
+            return this;
+        }
+    }
+    printf("!! NO CLIENT WITH THIS SOCKET\n");
+    return NULL;
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 SOCKET createServer(CHandlerDta *dta) {
     SOCKET server;
     SOCKADDR_IN serverAddr;
@@ -47,20 +70,22 @@ SOCKET createServer(CHandlerDta *dta) {
     }
 
     // создать поток обрабатывающий новых клиентов
-    dta->server = server;
-    pthread_t comingClientsTid;
-    pthread_create(&comingClientsTid, NULL, handleNewClients, (void *) dta);
-    pthread_detach(comingClientsTid);
+    dta->sock = server; // записать сокет созданного сервера в объект передающихся данных
+    pthread_t clientAcceptor;
+    pthread_create(&clientAcceptor, NULL, clientAcceptorRoutine, (void *) dta);
+    pthread_detach(clientAcceptor);
 
     printf(">> Server started\n");
     return server;
 }
 
-void * handleNewClients(void * dta) {
+void * clientAcceptorRoutine(void * dta) {
+    // распаковать данные, объявить переменные
     CHandlerDta * chd = (CHandlerDta *) dta;
-    SOCKET client, server = chd->server;
+    SOCKET client, server = chd->sock;
     SOCKADDR_IN clientAddr;
 
+    // бесконечный цикл приема новых клиентов, будет прерван при завершении главного потока сервера
     while(1) {
         int size = sizeof(clientAddr);
 
@@ -73,8 +98,9 @@ void * handleNewClients(void * dta) {
 
         // создать отдельный поток для обработки соединения с новым клиентом
         printf(">> Client accepted\n");
+        chd->sock = client;
         pthread_t newTreadId;
-        pthread_create(&newTreadId, NULL, clientRoutine, (void *) client);
+        pthread_create(&newTreadId, NULL, clientRoutine, (void *) chd);
         pthread_detach(newTreadId);
 
         // добавить нового клиента в список сервера
@@ -82,8 +108,9 @@ void * handleNewClients(void * dta) {
     }
 }
 
-void * clientRoutine(void * param) {
-    SOCKET client = (SOCKET) param;
+void * clientRoutine(void * dta) {
+    CHandlerDta * chd = (CHandlerDta *) dta;
+    SOCKET client = chd->sock;
     char msg[1025];
 
     // цикл обработки диалога с клиентом
@@ -92,7 +119,7 @@ void * clientRoutine(void * param) {
         int res = recv(client, msg, 1025, 0);
         if (!res || res == SOCKET_ERROR) {
             printf("!! ERROR RECEIVE MESSAGE, CLIENT DISCONNECTED\n");
-            return (void *) 4;
+            break;
         }
 
         // выход из цикла по команде
@@ -108,10 +135,12 @@ void * clientRoutine(void * param) {
         // послать обратно
         if (send(client, msg, (int) strlen(msg) + 1, 0) == SOCKET_ERROR) {
             printf("!! CANNOT SEND MESSAGE BACK");
-            return (void *) 5;
+            break;
         }
     }
-    return (void *) 0;
+    // клиент отключился, удаляем из списка
+    ClientNode *node = popClient(chd->list, client);
+    free(node);
 }
 
 void processData(char *data) {
