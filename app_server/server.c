@@ -39,9 +39,17 @@ ClientNode * popClient(ClientsList * list, SOCKET s) {
     return NULL;
 }
 
+void deleteList(ClientsList * list) {
+    while (list->self) {
+        ClientNode * this = list->self;
+        list->self = list->self->next;
+        free(this);
+    }
+}
+
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-SOCKET createServer(CHandlerDta *dta) {
+SOCKET createServer(SharedData *dta) {
     SOCKET server;
     SOCKADDR_IN serverAddr;
 
@@ -81,12 +89,12 @@ SOCKET createServer(CHandlerDta *dta) {
 
 void * clientAcceptorRoutine(void * dta) {
     // распаковать данные, объявить переменные
-    CHandlerDta * chd = (CHandlerDta *) dta;
-    SOCKET client, server = chd->sock;
+    SharedData * shd = (SharedData *) dta;
+    SOCKET client, server = shd->sock;
     SOCKADDR_IN clientAddr;
 
     // бесконечный цикл приема новых клиентов, будет прерван при завершении главного потока сервера
-    while(1) {
+    while(!shd->shutdown) {
         int size = sizeof(clientAddr);
 
         // захват клиента и установление соединения
@@ -98,23 +106,32 @@ void * clientAcceptorRoutine(void * dta) {
 
         // создать отдельный поток для обработки соединения с новым клиентом
         printf(">> Client accepted\n");
-        chd->sock = client;
+
+        pthread_mutex_lock(&(shd->mutex));
+        shd->sock = client;
+        pthread_mutex_unlock(&(shd->mutex));
+
         pthread_t newTreadId;
-        pthread_create(&newTreadId, NULL, clientRoutine, (void *) chd);
+        pthread_create(&newTreadId, NULL, clientRoutine, (void *) shd);
         pthread_detach(newTreadId);
 
         // добавить нового клиента в список сервера
-        addClient(chd->list, client, clientAddr, newTreadId);
+        pthread_mutex_lock(&(shd->mutex));
+        addClient(shd->list, client, clientAddr, newTreadId);
+        pthread_mutex_unlock(&(shd->mutex));
     }
+
 }
 
 void * clientRoutine(void * dta) {
-    CHandlerDta * chd = (CHandlerDta *) dta;
-    SOCKET client = chd->sock;
+    SharedData * shd = (SharedData *) dta;
+    pthread_mutex_lock(&(shd->mutex));
+    SOCKET client = shd->sock;
+    pthread_mutex_unlock(&(shd->mutex));
     char msg[1025];
 
     // цикл обработки диалога с клиентом
-    while (1) {
+    while (!shd->shutdown) {
         //  принять сообщение от клиента
         int res = recv(client, msg, 1025, 0);
         if (!res || res == SOCKET_ERROR) {
@@ -139,8 +156,10 @@ void * clientRoutine(void * dta) {
         }
     }
     // клиент отключился, удаляем из списка
-    ClientNode *node = popClient(chd->list, client);
+    pthread_mutex_lock(&(shd->mutex));
+    ClientNode *node = popClient(shd->list, client);
     free(node);
+    pthread_mutex_unlock(&(shd->mutex));
 }
 
 void processData(char *data) {
