@@ -22,26 +22,23 @@ SOCKET connectToServer() {
         closesocket(client);
         return INVALID_SOCKET;
     }
-    printf(">> Connected to server\n");
 
+    printf(">> Connected to server\n");
     return client;
 }
 
-int serverSession(SOCKET client, char *buffer) {
+int serverSession(SOCKET client, char *bufferIn, char *bufferOut) {
     // отправить сообщение на север
-    if (send(client, buffer, (int) strlen(buffer) + 1, 0) == SOCKET_ERROR) {
+    if (send(client, bufferIn, (int) strlen(bufferIn) + 1, 0) == SOCKET_ERROR) {
         printf("!! CANNOT SEND MASSAGE\n");
         closesocket(client);
         return 4;
     }
 
-    if (strcmp(buffer, "EXIT\n") == 0)
-        return 1;
-
     // получить ответ от сервера
     int rc = SOCKET_ERROR;
     while (rc == SOCKET_ERROR) {
-        rc = recv(client, buffer, 1025, 0);
+        rc = recv(client, bufferOut, 1025, 0);
         if (!rc || rc == WSAECONNRESET) {
             printf("!! CONNECTION CLOSED\n");
             closesocket(client);
