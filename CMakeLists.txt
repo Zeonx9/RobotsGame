@@ -4,7 +4,7 @@ project(RobotsGame)
 set(CMAKE_CXX_STANDARD 14)
 
 add_executable(RobotsGame test_dir/main.cpp)
-add_executable(Server app_server/main.c app_server/server.c app_server/server.h)
+add_executable(Server app_server/main.c app_server/server.c app_server/server.h app_server/requests.c app_server/requests.h)
 add_executable(Client app_client/client.cpp app_client/client.h app_client/interface.cpp app_client/interface.h)
 
 set(SFML_STATIC_LIBRARIES TRUE)
