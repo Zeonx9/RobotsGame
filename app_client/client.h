@@ -1,3 +1,5 @@
+/// файл с функциями необходимыми клиентскому приложения для связи с сервером
+
 #ifndef ROBOTSGAME_CLIENT_H
 #define ROBOTSGAME_CLIENT_H
 

@@ -3,13 +3,6 @@
 
 using namespace sf;
 
-void music() {
-    Music music;
-    music.openFromFile("../app_client/src/menu_music.ogg");
-    music.setLoop(true);
-    music.play();
-}
-
 int startWindow() {
     RenderWindow window(VideoMode(800, 600), "Tupa Bounce Ball");
 
@@ -23,6 +16,11 @@ int startWindow() {
     bool onGround = true;
     float dy;
     float a = 10;
+
+    Music music;
+    music.openFromFile("music.wav");
+    music.setLoop(true);
+    music.play();
 
     while (window.isOpen()) {
         Event event{};
