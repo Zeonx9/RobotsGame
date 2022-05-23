@@ -3,31 +3,36 @@
 
 void createMenuApp(sf::RenderWindow &window, SharedState * shs) {
     sf::Texture texture;
-    texture.loadFromFile("../app_client/src/factory_bg.jpg");
-
-    sf::Vector2u txSize = texture.getSize();
-    sf::Vector2u winSize = window.getSize();
-
     sf::Sprite sprite;
-    sprite.setTexture(texture);
-    float scaling = std::max((float) winSize.x / (float) txSize.x, (float) winSize.y / (float) txSize.y);
-    sprite.scale(scaling, scaling);
-
     sf::Music music;
-    music.openFromFile("../app_client/src/menu_music.wav");
-    music.setLoop(true);
-    music.play();
-
     sf::Font font1, font2;
+    int state = -1;
+
+    texture.loadFromFile("../app_client/src/factory_bg.jpg");
+    music.openFromFile("../app_client/src/menu_music.wav");
     font1.loadFromFile("../app_client/src/game_font.otf");
     font2.loadFromFile("../app_client/src/circle_font.otf");
 
-    sf::Text header("Robots   Game", font1, 40),
+    music.setLoop(true);
+    music.play();
+
+    sf::Vector2u txSize = texture.getSize();
+    sf::Vector2u winSize = window.getSize();
+    float scaling = std::max((float) winSize.x / (float) txSize.x, (float) winSize.y / (float) txSize.y);
+
+    sprite.setTexture(texture);
+    sprite.scale(scaling, scaling);
+
+    sf::Text
+        header("Robots   Game", font1, 40),
         button1("Log me in", font2, 30),
-        button2("Exit", font2, 30);
+        button2("Exit", font2, 30),
+        connected("", font2, 20);
 
     header.setFillColor(sf::Color(120, 50, 20));
     header.setPosition(200, 200);
+
+    connected.setPosition(650, 450);
 
     button1.setFillColor(sf::Color(10, 10, 10));
     button1.setPosition(330, 330);
@@ -42,9 +47,7 @@ void createMenuApp(sf::RenderWindow &window, SharedState * shs) {
         sf::Event event{};
         while (window.pollEvent(event)) {
             if (event.type == sf::Event::Closed) {
-                pthread_mutex_lock(&(shs->mutex));
                 shs->currentActivity = closeApp; // сигнал для закрытия потока связи с сервером
-                pthread_mutex_unlock(&(shs->mutex));
                 window.close();
             }
             if (event.type == sf::Event::MouseMoved) {
@@ -75,12 +78,18 @@ void createMenuApp(sf::RenderWindow &window, SharedState * shs) {
                 pthread_mutex_unlock(&(shs->mutex));
             }
         }
+        if (state != shs->connected) {
+            state = shs->connected;
+            connected.setString(state ? "connected" : "disconnected");
+            connected.setFillColor(state ? sf::Color::Green : sf::Color::Red);
+        }
 
         window.clear();
         window.draw(sprite);
         window.draw(header);
         window.draw(button1);
         window.draw(button2);
+        window.draw(connected);
         window.display();
     }
 }
@@ -89,20 +98,17 @@ void createMenuApp(sf::RenderWindow &window, SharedState * shs) {
 void * requestsRoutine(void * dta) {
     SharedState * shs = (SharedState *) dta;
 
-    while (shs->currentActivity != closeApp) {
-        pthread_mutex_lock(&(shs->mutex));
-        shs->sock = connectToServer();
-        pthread_mutex_unlock(&(shs->mutex));
-        if (shs->sock != INVALID_SOCKET)
-            break;
-        printf("try again?\n");
-        getchar();
-    }
-    shs->connected++;
-
     // начать цикл для обработки запросов, пока не закроют приложение
     char bufIn[1025] = "", bufOut[1025] = "";
     while(shs->currentActivity != closeApp){
+
+        // цикл пытается установить соединение, пока оно не установлено или приложение не будет закрываться
+        while (!shs->connected && shs->currentActivity != closeApp) {
+            shs->sock = connectToServer();
+            if (shs->sock != INVALID_SOCKET)
+                shs->connected++;
+        }
+
         // логин на сервер
         if (shs->currentActivity == logIn) {
             char login[20], password[20];
@@ -112,8 +118,10 @@ void * requestsRoutine(void * dta) {
             scanf("%s", password);
             sprintf(bufIn, "%c %s %s", (shs->currentActivity == logIn ? 'A' : 'B'), login, password);
 
-            serverSession(shs->sock, bufIn, bufOut);
-            printf("<<<%s\n", bufOut);
+            int res = serverSession(shs->sock, bufIn, bufOut);
+            if (res) shs->connected = 0;
+
+            printf("<<< %s\n", bufOut);
 
             shs->currentActivity = mainMenu;
         }
