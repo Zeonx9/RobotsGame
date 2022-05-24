@@ -5,13 +5,13 @@
 #ifndef ROBOTSGAME_DATABASE_H
 #define ROBOTSGAME_DATABASE_H
 
-void registerUser(char * login, char * password);
-void findPlayer(char* login);
-
 
 typedef struct player_data{
     int ID;
     char login[21], password[21];
+    int highScore, gamesPlayed, wins;
 } PlayerData;
+PlayerData *findPlayer(char* login);
+void registerUser(char * login, char * password);
 
 #endif //ROBOTSGAME_DATABASE_H

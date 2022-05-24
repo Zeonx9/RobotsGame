@@ -13,6 +13,9 @@ int findCallback(void *data, int argc, char **argv, char **azColName){
     pd->ID = atoi(argv[0]);
     strcpy(pd->login, argv[1]);
     strcpy(pd->password, argv[2]);
+    pd->gamesPlayed = atoi(argv[3]);
+    pd->highScore = atoi(argv[4]);
+    pd->wins = atoi(argv[5]);
     return 0;
 }
 
@@ -29,6 +32,10 @@ int printCallback(void *data, int argc, char **argv, char **azColName){
 }
 
 void registerUser(char * login, char * password){
+    // User already exists
+    if (findPlayer(login)->ID != -1){
+        exit(7);
+    }
     sqlite3 *db;
     char *zErrMsg = 0;
     int rc;
@@ -45,8 +52,13 @@ void registerUser(char * login, char * password){
 
     /* Create SQL statement */
     sprintf(sql, "CREATE TABLE IF NOT EXISTS PLAYERS("
-                 "LOGIN TEXT NOT NULL,"
-                 "PASSWORD TEXT NOT NULL);"
+                 "'ID' INTEGER PRIMARY KEY AUTOINCREMENT,"
+                 "'LOGIN' TEXT UNIQUE NOT NULL,"
+                 "'PASSWORD' TEXT NOT NULL,"
+                 "'GAMES' INTEGER,"
+                 "'HIGH SCORE' INTEGER,"
+                 "'WINS' INTEGER"
+                 ");"
                  "INSERT INTO PLAYERS(LOGIN, PASSWORD)"
                  "VALUES('%s', '%s')", login, password);
 
@@ -64,7 +76,7 @@ void registerUser(char * login, char * password){
 
 }
 
-void findPlayer(char* login){
+PlayerData *findPlayer(char* login){
     sqlite3 *db;
 
     char *zErrMsg = 0;
@@ -91,9 +103,9 @@ void findPlayer(char* login){
         fprintf(stdout, "Operation done successfully\n");
     }
 
-    printf("%d", pd->ID);
     sqlite3_close(db);
 
+    return pd;
 
 }
 
