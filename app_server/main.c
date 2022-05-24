@@ -1,6 +1,8 @@
 #include "server.h"
 
+
 int main() {
+
     // подключение библиотеки ws2_32.lib
     WSADATA wsd;
     if (WSAStartup(MAKEWORD(2, 2), &wsd)) {
