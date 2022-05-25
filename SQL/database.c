@@ -1,6 +1,3 @@
-//
-// Created by Шадрин Антон Альберт on 24.05.2022.
-//
 
 #include "database.h"
 #include <stdio.h>
@@ -46,31 +43,31 @@ int printCallback(void *data, int argc, char **argv, char **azColName){
     return 0;
 }
 
-void registerUser(char * login, char * password){
+int registerUser(char * login, char * password){
     // User already exists
     if (findPlayer(login)->ID != -1){
-        exit(7);
+        return -1;
     }
     sqlite3 *db;
     char *zErrMsg = 0;
     int rc;
-    char sql[250];
+    char sql[280];
 
     rc = sqlite3_open("../players", &db);
 
     if( rc ) {
         fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
-        exit(4);
+        return -1;
     }
 
     /* Create SQL statement */
     sprintf(sql, "CREATE TABLE IF NOT EXISTS PLAYERS("
                  "'ID' INTEGER PRIMARY KEY AUTOINCREMENT,"
-                 "'LOGIN' TEXT UNIQUE NOT NULL,"
+                 "'LOGIN' TEXT UNIQUE DEFAULT 0 NOT NULL,"
                  "'PASSWORD' TEXT NOT NULL,"
-                 "'GAMES' INTEGER,"
-                 "'HIGH SCORE' INTEGER,"
-                 "'WINS' INTEGER"
+                 "'GAMES' INTEGER DEFAULT 0,"
+                 "'HIGH SCORE' INTEGER DEFAULT 0,"
+                 "'WINS' INTEGER DEFAULT 0"
                  ");"
                  "INSERT INTO PLAYERS(LOGIN, PASSWORD)"
                  "VALUES('%s', '%s')", login, password);
@@ -82,9 +79,10 @@ void registerUser(char * login, char * password){
     if( rc != SQLITE_OK ) {
         fprintf(stderr, "SQL error: %s\n", zErrMsg);
         sqlite3_free(zErrMsg);
+        return -1;
     }
     sqlite3_close(db);
-
+    return 0;
 }
 
 PlayerData *findPlayer(char* login){
@@ -100,7 +98,7 @@ PlayerData *findPlayer(char* login){
 
     if( rc ) {
         fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
-        exit(4);
+
     }
     sprintf(sql,"SELECT * FROM PLAYERS WHERE LOGIN = '%s';", login);
 
@@ -116,7 +114,7 @@ PlayerData *findPlayer(char* login){
 
 }
 
-void updateData(int ID, Categories category, int value){
+int updateData(int ID, Categories category, int value){
 
     char categoryNames[3][11] = {"GAMES", "HIGH SCORE", "WINS"};
     sqlite3 *db;
@@ -129,7 +127,7 @@ void updateData(int ID, Categories category, int value){
 
     if( rc ) {
         fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
-        exit(4);
+        return -1;
     }
 
     sprintf(sql,"UPDATE PLAYERS SET '%s' = %d WHERE ID = %d", categoryNames[category], value, ID);
@@ -138,8 +136,10 @@ void updateData(int ID, Categories category, int value){
     if( rc != SQLITE_OK ) {
         fprintf(stderr, "SQL error: %s\n", zErrMsg);
         sqlite3_free(zErrMsg);
+        return -1;
     }
     sqlite3_close(db);
+    return 0;
 }
 
 PlayerData **findBestPlayers(int count){
@@ -154,7 +154,6 @@ PlayerData **findBestPlayers(int count){
 
     if( rc ) {
         fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
-        exit(4);
     }
 
     PlayerData** pd = malloc(sizeof(count));
@@ -165,14 +164,13 @@ PlayerData **findBestPlayers(int count){
     Pair *pr = malloc(sizeof(Pair));
     pr->pd = pd;
     pr->number = &i;
-
+    pd[0]->ID = -1;
     sprintf(sql, "SELECT * FROM PLAYERS\n"
                  "ORDER BY \"HIGH SCORE\" DESC LIMIT %d", count);
 
     rc = sqlite3_exec(db, sql, topScoreCallback, pr, &zErrMsg);
     if( rc != SQLITE_OK ) {
         fprintf(stderr, "SQL error: %s\n", zErrMsg);
-        sqlite3_free(zErrMsg);
     }
 
     sqlite3_close(db);

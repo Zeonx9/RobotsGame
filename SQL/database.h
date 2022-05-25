@@ -1,7 +1,3 @@
-//
-// Created by Шадрин Антон Альберт on 24.05.2022.
-//
-
 #ifndef ROBOTSGAME_DATABASE_H
 #define ROBOTSGAME_DATABASE_H
 
@@ -23,8 +19,8 @@ typedef struct pair{
 }Pair;
 
 PlayerData *findPlayer(char* login);
-void registerUser(char * login, char * password);
+int registerUser(char * login, char * password);
 PlayerData **findBestPlayers(int count);
-void updateData(int ID, Categories category, int value);
+int updateData(int ID, Categories category, int value);
 
 #endif //ROBOTSGAME_DATABASE_H
