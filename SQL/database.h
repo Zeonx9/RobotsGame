@@ -16,8 +16,15 @@ typedef struct player_data{
     char login[21], password[21];
     int highScore, gamesPlayed, wins;
 } PlayerData;
+
+typedef struct pair{
+    int *number;
+    PlayerData **pd;
+}Pair;
+
 PlayerData *findPlayer(char* login);
 void registerUser(char * login, char * password);
+PlayerData **findBestPlayers(int count);
 void updateData(int ID, Categories category, int value);
 
 #endif //ROBOTSGAME_DATABASE_H
