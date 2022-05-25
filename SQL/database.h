@@ -5,6 +5,11 @@
 #ifndef ROBOTSGAME_DATABASE_H
 #define ROBOTSGAME_DATABASE_H
 
+typedef enum {
+    games,
+    highScore,
+    wins
+}Categories;
 
 typedef struct player_data{
     int ID;
@@ -13,5 +18,6 @@ typedef struct player_data{
 } PlayerData;
 PlayerData *findPlayer(char* login);
 void registerUser(char * login, char * password);
+void updateData(int ID, Categories category, int value);
 
 #endif //ROBOTSGAME_DATABASE_H

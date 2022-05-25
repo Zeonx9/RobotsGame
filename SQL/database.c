@@ -81,7 +81,7 @@ PlayerData *findPlayer(char* login){
 
     char *zErrMsg = 0;
     int rc;
-    char sql[250];
+    char sql[60];
     PlayerData* pd = malloc(sizeof(PlayerData));
     pd->ID = -1;
 
@@ -107,5 +107,36 @@ PlayerData *findPlayer(char* login){
 
     return pd;
 
+}
+
+void updateData(int ID, Categories category, int value){
+
+    char categoryNames[3][11] = {"GAMES", "HIGH SCORE", "WINS"};
+    sqlite3 *db;
+
+    char *zErrMsg = 0;
+    int rc;
+    char sql[250];
+
+    rc = sqlite3_open("../players", &db);
+
+    if( rc ) {
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+        exit(4);
+    } else {
+        fprintf(stderr, "Opened database successfully\n");
+    }
+
+    sprintf(sql,"UPDATE PLAYERS SET '%s' = %d WHERE ID = %d", categoryNames[category], value, ID);
+
+    rc = sqlite3_exec(db, sql, NULL, NULL, &zErrMsg);
+    if( rc != SQLITE_OK ) {
+        fprintf(stderr, "SQL error: %s\n", zErrMsg);
+        sqlite3_free(zErrMsg);
+    } else {
+        fprintf(stdout, "Operation done successfully\n");
+    }
+
+    sqlite3_close(db);
 }
 
