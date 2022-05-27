@@ -28,4 +28,6 @@ void * requestsRoutine(void * dta);
 
 void createMenuApp(sf::RenderWindow &window, SharedState * shs);
 
+void createRegWindow(sf::RenderWindow &window, SharedState * shs);
+
 #endif //ROBOTSGAME_INTERFACE_H

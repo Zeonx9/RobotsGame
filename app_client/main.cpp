@@ -19,14 +19,14 @@ int main() {
     pthread_detach(tid);
 
     // создать окно
-    sf::RenderWindow window(sf::VideoMode(800, 500), "Client");
+    sf::RenderWindow window(sf::VideoMode(1920, 1080), "Client");
     window.setFramerateLimit(40);
     // загрузить иконку
     sf::Image icon;
     icon.loadFromFile("../app_client/src/rgame_icon64.png");
     window.setIcon(icon.getSize().x, icon.getSize().y, icon.getPixelsPtr());
 
-    // начать рисовать интерфейс
+    // отрисовка интерфейса стартового окна
     createMenuApp(window, shs);
 
     // ждать, пока поток связи не закроется
