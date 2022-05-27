@@ -5,11 +5,11 @@
 #include <string.h>
 
 /**
- * - callback функция для SQL запроса
- * - заполняет все поля для существующего в базе данных пользователя и
- * - сохраняет их в специальную структуру Pair, в которой первое поле -
- * - номер обрабатываемого пользователя, а второе - непосредственно массив с пользователями
- * - размер массива задаётся параметром count функции findBestPlayers()
+ * callback функция для SQL запроса
+ * заполняет все поля для существующего в базе данных пользователя и
+ * сохраняет их в специальную структуру Pair, в которой первое поле -
+ * номер обрабатываемого пользователя, а второе - непосредственно массив с пользователями
+ * размер массива задаётся параметром count функции findBestPlayers()
  **/
 int topScoreCallback(void *data, int argc, char **argv, char **azColName){
     Pair *pr = (Pair*)data;
@@ -28,7 +28,7 @@ int topScoreCallback(void *data, int argc, char **argv, char **azColName){
 /**
  * callback функция для SQL запроса
  * заполняет все поля для существующего в базе данных пользователя
- */
+ **/
 int findCallback(void *data, int argc, char **argv, char **azColName){
     PlayerData* pd = (PlayerData*) data;
     pd->ID = atoi(argv[0]);
@@ -42,7 +42,7 @@ int findCallback(void *data, int argc, char **argv, char **azColName){
 
 /**
  * callback функция, которая печатает в консоль все данные на найденного пользователя
- * **/
+ **/
 int printCallback(void *data, int argc, char **argv, char **azColName){
     int i;
     for(i = 0; i<argc; i++){
@@ -56,7 +56,7 @@ int printCallback(void *data, int argc, char **argv, char **azColName){
  * Функция для регистрации нового пользователя
  * Для регистрации нужны логин и пароль
  * Возвращает -1 при ошибке регистрации
- * **/
+ **/
 int registerUser(char * login, char * password){
     // User already exists
     if (findPlayer(login)->ID != -1){
@@ -109,7 +109,7 @@ int registerUser(char * login, char * password){
 /**
  * Поиск пользователя в БД и возврат данных о нём в виде структуры PlayerData
  * Если пользователя нет, то в ID будет -1
- * **/
+ **/
 PlayerData *findPlayer(char* login){
     sqlite3 *db;
 
@@ -147,7 +147,7 @@ PlayerData *findPlayer(char* login){
  * Функция для обновления определённых данных о пользователе
  * Принимает ID и одно из полей enum-а(аналогичного полю таблицы) и значение, на которое нужно заменить
  * При ошибке возвращает -1
- * **/
+ **/
 int updateData(int ID, Categories category, int value){
 
     char categoryNames[3][11] = {"GAMES", "HIGH SCORE", "WINS"};
@@ -188,7 +188,7 @@ int updateData(int ID, Categories category, int value){
  * При отсутствии достаточного количества пользователей, недостающие будут помечены при помощи
  * -1 в ID
  * Возвращает ссылку на массив с пользователями
- * **/
+ **/
 PlayerData **findBestPlayers(int count){
 
     sqlite3 *db;
@@ -229,5 +229,37 @@ PlayerData **findBestPlayers(int count){
     sqlite3_close(db);
 
     return pd;
+}
+
+/**
+ * Функция для удаления записи из БД
+ * В качестве параметра принимает ID игрока
+ * В случае ошибки возвращает -1
+ **/
+int deletePlayer(int ID){
+    sqlite3 *db;
+    char *zErrMes = 0;
+    int rc;
+
+    rc = sqlite3_open("../players" ,&db);
+
+    if (rc){
+        printf("Error on opening db");
+        return -1;
+    }
+
+    char sql[255];
+    sprintf(sql, "DELETE FROM PLAYERS WHERE ID = %d", ID);
+
+    rc = sqlite3_exec(db, sql, NULL, NULL, &zErrMes);
+
+    if (rc){
+        fprintf(stderr, "Error on deleting player: %s", zErrMes);
+        return -1;
+    }
+
+    sqlite3_close(db);
+    return 0;
+
 }
 

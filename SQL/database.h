@@ -22,5 +22,6 @@ PlayerData *findPlayer(char* login);
 int registerUser(char * login, char * password);
 PlayerData **findBestPlayers(int count);
 int updateData(int ID, Categories category, int value);
+int deletePlayer(int ID);
 
 #endif //ROBOTSGAME_DATABASE_H
