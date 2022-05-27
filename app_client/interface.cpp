@@ -1,17 +1,130 @@
 #include <SFML/Audio.hpp>
 #include "interface.h"
+#include "intfc_classes.h"
+
+void createRegWindow(sf::RenderWindow &window, SharedState * shs) {
+    // TODO сделать, чтобы музыка продолжала играть непрерывно
+    sf::Texture texture;
+    sf::Sprite sprite;
+    sf::Font font;
+    int state = -1;
+
+    texture.loadFromFile("../app_client/src/background_log.png");
+    font.loadFromFile("../app_client/src/gameFont.otf");
+
+    sf::Vector2u txSize = texture.getSize();
+    sf::Vector2u winSize = window.getSize();
+    float scaling = std::max((float) winSize.x / (float) txSize.x, (float) winSize.y / (float) txSize.y);
+
+    sprite.setTexture(texture);
+    sprite.scale(scaling, scaling);
+
+    sf::Text
+        header("login or registration", font, 100),
+        connected("", font, 40), // показывает, есть ли соединение с сервером
+        version("version 1.0", font, 40),
+        text1("enter your username", font, 30),
+        text2("enter your password", font, 30);
+
+    header.setFillColor(sf::Color(178, 189, 231));
+    header.setPosition(447, 150);
+
+    connected.setPosition(1681, 970);
+
+    version.setFillColor(sf::Color(255, 255, 255));
+    version.setPosition(1681, 1013);
+
+    text1.setFillColor(sf::Color(122, 122, 122));
+    text1.setPosition(818, 427);
+
+    text2.setFillColor(sf::Color(122, 122, 122));
+    text2.setPosition(821, 522);
+
+    Button login ("login", font, 70, 0, 171, 57);
+    Button reg ("register", font, 70, 0, 274, 57);
+    Button back ("back", font, 70, 0, 137, 57);
+
+    login.setPosition(682, 607);
+    reg.setPosition(966, 607);
+    back.setPosition(45, 944);
+
+    char* username = (char*) malloc(100);
+    char* password = (char*) malloc(100);
+
+    while (window.isOpen()) {
+        sf::Event event{};
+        while (window.pollEvent(event)) {
+            if (event.type == sf::Event::Closed) {
+                shs->currentActivity = closeApp; // сигнал для закрытия потока связи с сервером
+                window.close();
+            }
+            if (event.type == sf::Event::MouseMoved) {
+                login.mouseOnButton(event.mouseMove.x, event.mouseMove.y);
+                reg.mouseOnButton(event.mouseMove.x, event.mouseMove.y);
+                back.mouseOnButton(event.mouseMove.x, event.mouseMove.y);
+            }
+            if (event.type == sf::Event::MouseButtonPressed) {
+                if (login.isClick(event.mouseButton.x, event.mouseButton.y)){
+//                    printf("clicked login\n");
+//                    pthread_mutex_lock(&(shs->mutex));
+//                    shs->currentActivity = logIn;
+//                    pthread_mutex_unlock(&(shs->mutex));
+                    printf("Input your username: ");
+                    scanf("%s\n", &username);
+                    printf("Input your password: ");
+                    scanf("%s\n", &password);
+                    shs->logged = 1;
+                    createMenuApp(window, shs);
+                    // TODO войти в аккаунт
+                }
+                if (reg.isClick(event.mouseButton.x, event.mouseButton.y)){
+                    printf("Input your username: ");
+                    scanf("%s\n", &username);
+                    printf("Input your password: ");
+                    scanf("%s\n", &password);
+                    shs->logged = 1;
+                    createMenuApp(window, shs);
+                    // TODO зарегистрировать пользователя
+                }
+                if (back.isClick(event.mouseButton.x, event.mouseButton.y)){
+                    createMenuApp(window, shs);
+                }
+
+            }
+        }
+        if (state != shs->connected) {
+            state = shs->connected;
+            connected.setString(state ? "   connected" : "disconnected");
+            connected.setFillColor(state ? sf::Color(143, 200, 99) : sf::Color(176, 52, 37));
+        }
+
+        window.clear();
+        window.draw(sprite);
+        window.draw(header);
+        window.draw(connected);
+        window.draw(version);
+        window.draw(login.draw());
+        window.draw(reg.draw());
+        window.draw(back.draw());
+        window.draw(text1);
+        window.draw(text2);
+        window.display();
+
+    }
+
+}
+
 
 void createMenuApp(sf::RenderWindow &window, SharedState * shs) {
     sf::Texture texture;
     sf::Sprite sprite;
     sf::Music music;
-    sf::Font font1, font2;
+    sf::Font font;
     int state = -1;
 
-    texture.loadFromFile("../app_client/src/factory_bg.jpg");
+    texture.loadFromFile("../app_client/src/background_sm.png");
     music.openFromFile("../app_client/src/menu_music.wav");
-    font1.loadFromFile("../app_client/src/game_font.otf");
-    font2.loadFromFile("../app_client/src/circle_font.otf");
+    font.loadFromFile("../app_client/src/gameFont.otf");
 
     music.setLoop(true);
     music.play();
@@ -24,24 +137,27 @@ void createMenuApp(sf::RenderWindow &window, SharedState * shs) {
     sprite.scale(scaling, scaling);
 
     sf::Text
-        header("Robots   Game", font1, 40),
-        button1("Log me in", font2, 30),
-        button2("Exit", font2, 30),
-        connected("", font2, 20);
+        header("Robots Game", font, 150),
+        connected("", font, 40), // показывает, есть ли соединение с сервером
+        version("version 1.0", font, 40);
 
-    header.setFillColor(sf::Color(120, 50, 20));
-    header.setPosition(200, 200);
+    header.setFillColor(sf::Color(178, 189, 231));
+    header.setPosition(150, 150);
 
-    connected.setPosition(650, 450);
+    connected.setPosition(1681, 970);
 
-    button1.setFillColor(sf::Color(10, 10, 10));
-    button1.setPosition(330, 330);
-    button1.setStyle(sf::Text::Bold);
+    version.setFillColor(sf::Color(255, 255, 255));
+    version.setPosition(1681, 1013);
 
-    button2.setFillColor(sf::Color(10, 10, 10));
-    button2.setPosition(360, 380);
-    button2.setStyle(sf::Text::Bold);
+    Button startGame ("Start game", font, 70, -1, 342, 57);
+    Button login ("Log in", font, 70, 0, 206, 57);
+    Button exit ("Exit", font, 70, 0, 137, 57);
 
+    if (shs->logged != 0) startGame.changeCondition(0);
+
+    startGame.setPosition(155, 442);
+    login.setPosition(155, 512);
+    exit.setPosition(155, 582);
 
     while (window.isOpen()) {
         sf::Event event{};
@@ -51,46 +167,43 @@ void createMenuApp(sf::RenderWindow &window, SharedState * shs) {
                 window.close();
             }
             if (event.type == sf::Event::MouseMoved) {
-                if (330 < event.mouseMove.x && event.mouseMove.x < 460 &&
-                    330 < event.mouseMove.y && event.mouseMove.y < 360) {
-                    button1.setCharacterSize(35);
-                    button1.setFillColor(sf::Color(120, 50, 20));
-                }
-                else if (360 < event.mouseMove.x && event.mouseMove.x < 410 &&
-                    380 < event.mouseMove.y && event.mouseMove.y < 410) {
-                    button2.setCharacterSize(35);
-                    button2.setFillColor(sf::Color(120, 50, 20));
-                }
-                else {
-                    button1.setFillColor(sf::Color(10, 10, 10));
-                    button2.setFillColor(sf::Color(10, 10, 10));
-                    button1.setCharacterSize(30);
-                    button2.setCharacterSize(30);
-                }
-                // printf("mouse %d, %d\na", event.mouseMove.x, event.mouseMove.y);
+                startGame.mouseOnButton(event.mouseMove.x, event.mouseMove.y);
+                login.mouseOnButton(event.mouseMove.x, event.mouseMove.y);
+                exit.mouseOnButton(event.mouseMove.x, event.mouseMove.y);
             }
-            if (event.type == sf::Event::MouseButtonPressed &&
-                330 < event.mouseButton.x && event.mouseButton.x < 460 &&
-                330 < event.mouseButton.y && event.mouseButton.y < 360) {
-                printf("clicked login\n");
-                pthread_mutex_lock(&(shs->mutex));
-                shs->currentActivity = logIn;
-                pthread_mutex_unlock(&(shs->mutex));
+            if (event.type == sf::Event::MouseButtonPressed) {
+                if (startGame.isClick(event.mouseButton.x, event.mouseButton.y)) {
+                    // TODO окно ожидания игры
+                }
+                if (login.isClick(event.mouseButton.x, event.mouseButton.y)){
+                    printf("clicked login\n");
+                    pthread_mutex_lock(&(shs->mutex));
+                    shs->currentActivity = logIn;
+                    pthread_mutex_unlock(&(shs->mutex));
+                    createRegWindow(window, shs);
+                }
+                if (exit.isClick(event.mouseButton.x, event.mouseButton.y)){
+                    // TODO сделать выход из программы
+                }
+
             }
         }
         if (state != shs->connected) {
             state = shs->connected;
-            connected.setString(state ? "connected" : "disconnected");
-            connected.setFillColor(state ? sf::Color::Green : sf::Color::Red);
+            connected.setString(state ? "   connected" : "disconnected");
+            connected.setFillColor(state ? sf::Color(143, 200, 99) : sf::Color(176, 52, 37));
         }
 
         window.clear();
         window.draw(sprite);
         window.draw(header);
-        window.draw(button1);
-        window.draw(button2);
         window.draw(connected);
+        window.draw(version);
+        window.draw(startGame.draw());
+        window.draw(login.draw());
+        window.draw(exit.draw());
         window.display();
+
     }
 }
 
