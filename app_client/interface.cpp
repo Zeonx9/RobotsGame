@@ -14,17 +14,28 @@ void windowDispatcher(SharedState * shs) {
     };
 
     // создать окно
-    sf::RenderWindow window;
+    sf::RenderWindow window(sf::VideoMode(1920, 1080), "Client");
     // загрузить иконку
     sf::Image icon;
     icon.loadFromFile("../app_client/src/rgame_icon64.png");
+    window.setIcon(icon.getSize().x, icon.getSize().y, icon.getPixelsPtr());
+    window.setFramerateLimit(40);
+
+    sf::Music music;
+    music.openFromFile("../app_client/src/menu_music.wav");
+    music.setLoop(true);
+    music.play();
+    int isPlaying = 1;
 
     // если приложение в валидном для отрисовки состоянии, то создаем его
     while(shs->currentActivity > closeApp) {
-        window.create(sf::VideoMode(1920, 1080), "Client"); // , sf::Style::Fullscreen
-        window.setIcon(icon.getSize().x, icon.getSize().y, icon.getPixelsPtr());
-        window.setFramerateLimit(40);
+        if (shs->currentActivity == play) {
+            music.stop();
+            isPlaying = 0;
+        }
         windowFuncs[shs->currentActivity](window, shs);
+        if (!isPlaying)
+            music.play();
     }
     window.close();
 }
@@ -96,12 +107,7 @@ void createRegWindow(sf::RenderWindow &window, SharedState * shs) {
     texture.loadFromFile("../app_client/src/background_log.png");
     font.loadFromFile("../app_client/src/gameFont.otf");
 
-    sf::Vector2u txSize = texture.getSize();
-    sf::Vector2u winSize = window.getSize();
-    float scaling = std::max((float) winSize.x / (float) txSize.x, (float) winSize.y / (float) txSize.y);
-
     sprite.setTexture(texture);
-    sprite.scale(scaling, scaling);
 
     sf::Text
         header("login or registration", font, 100),
@@ -211,23 +217,13 @@ void createRegWindow(sf::RenderWindow &window, SharedState * shs) {
 void createMenuApp(sf::RenderWindow &window, SharedState * shs) {
     sf::Texture texture;
     sf::Sprite sprite;
-    sf::Music music;
     sf::Font font;
     int DrawnConnectionState = -1;
 
     texture.loadFromFile("../app_client/src/background_sm.png");
-    music.openFromFile("../app_client/src/menu_music.wav");
     font.loadFromFile("../app_client/src/gameFont.otf");
 
-    music.setLoop(true);
-    music.play();
-
-    sf::Vector2u txSize = texture.getSize();
-    sf::Vector2u winSize = window.getSize();
-    float scaling = std::max((float) winSize.x / (float) txSize.x, (float) winSize.y / (float) txSize.y);
-
     sprite.setTexture(texture);
-    sprite.scale(scaling, scaling);
 
     sf::Text
         header("Robots Game", font, 150),
