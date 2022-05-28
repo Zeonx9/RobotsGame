@@ -14,7 +14,7 @@ void windowDispatcher(SharedState * shs) {
     };
 
     // создать окно
-    sf::RenderWindow window(sf::VideoMode(1920, 1080), "Client");
+    sf::RenderWindow window(sf::VideoMode(1920, 1080), "Client", sf::Style::Fullscreen);
     // загрузить иконку
     sf::Image icon;
     icon.loadFromFile("../app_client/src/rgame_icon64.png");
@@ -114,7 +114,8 @@ void createRegWindow(sf::RenderWindow &window, SharedState * shs) {
         connected("", font, 40), // показывает, есть ли соединение с сервером
         version("version 1.0", font, 40),
         text1("enter your username", font, 30),
-        text2("enter your password", font, 30);
+        text2("enter your password", font, 30),
+        errorText("", font, 50);  // текст ошибки
 
     header.setFillColor(sf::Color(178, 189, 231));
     header.setPosition(447, 150);
@@ -130,6 +131,9 @@ void createRegWindow(sf::RenderWindow &window, SharedState * shs) {
     text2.setFillColor(sf::Color(122, 122, 122));
     text2.setPosition(821, 522);
 
+    errorText.setFillColor(sf::Color(176, 52, 37));
+    text2.setPosition(630, 724);
+
     Button login ("login", font, 70, 0, 171, 57);
     Button reg ("register", font, 70, 0, 274, 57);
     Button back ("back", font, 70, 0, 137, 57);
@@ -137,6 +141,18 @@ void createRegWindow(sf::RenderWindow &window, SharedState * shs) {
     login.setPosition(682, 607);
     reg.setPosition(966, 607);
     back.setPosition(45, 944);
+
+    sf::RectangleShape line1(sf::Vector2f(557, 2));
+    sf::RectangleShape line2(sf::Vector2f(557, 2));
+
+    line1.setPosition(682, 417);
+    line2.setPosition(682, 512);
+
+    TextBox log(font, 50, 557, 41);
+    TextBox pass(font, 50, 557, 41);
+
+    log.setPosition(682, 361);
+    pass.setPosition(682, 456);
 
     while (window.isOpen() && (shs->currentActivity == logHub || shs->currentActivity > play)) {
         sf::Event event{};
@@ -173,6 +189,22 @@ void createRegWindow(sf::RenderWindow &window, SharedState * shs) {
                     shs->currentActivity = mainMenu;
                     //pthread_mutex_unlock(&(shs->mutex));
                 }
+                if (log.isClick(event.mouseButton.x, event.mouseButton.y))
+                    pass.changeCondition(0);
+                else if (pass.isClick(event.mouseButton.x, event.mouseButton.y))
+                    log.changeCondition(0);
+                else {
+                    log.changeCondition(0);
+                    pass.changeCondition(0);
+                }
+            }
+            if (event.type == sf::Event::TextEntered){
+                if (log.isActive())
+                    if (event.text.unicode < 128)
+                        log.updateText(event.text.unicode);
+                if (pass.isActive())
+                    if (event.text.unicode < 128)
+                        pass.updateText(event.text.unicode);
             }
         }
 
@@ -209,6 +241,10 @@ void createRegWindow(sf::RenderWindow &window, SharedState * shs) {
         window.draw(back.draw());
         window.draw(text1);
         window.draw(text2);
+        window.draw(line1);
+        window.draw(line2);
+        window.draw(log.draw());
+        window.draw(pass.draw());
         window.display();
     }
 }
