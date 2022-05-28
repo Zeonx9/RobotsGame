@@ -28,12 +28,12 @@ void windowDispatcher(SharedState * shs) {
     int isPlaying = 1;
 
     // если приложение в валидном для отрисовки состоянии, то создаем его
-    while(shs->currentActivity > closeApp) {
-        if (shs->currentActivity == play) {
+    while(shs->act > closeApp) {
+        if (shs->act == play) {
             music.stop();
             isPlaying = 0;
         }
-        windowFuncs[shs->currentActivity](window, shs);
+        windowFuncs[shs->act](window, shs);
         if (!isPlaying)
             music.play();
     }
@@ -46,50 +46,51 @@ void * requestsRoutine(void * dta) {
 
     // начать цикл для обработки запросов, пока не закроют приложение
     char bufIn[1025] = "", bufOut[1025] = "";
-    while(shs->currentActivity != closeApp){
+    while(shs->act != closeApp){
 
         // цикл пытается установить соединение, пока оно не установлено или приложение не будет закрываться
-        while (!shs->connected && shs->currentActivity != closeApp) {
+        while (!shs->connected && shs->act != closeApp) {
             shs->sock = connectToServer();
             if (shs->sock != INVALID_SOCKET)
                 shs->connected++;
         }
 
         // логин на сервер
-        if (shs->currentActivity == logIn || shs->currentActivity == registering) {
-            char login[21], password[21];
-            printf("enter your login:");
-            scanf("%s", login);
-            printf("enter your password:");
-            scanf("%s", password);
-            sprintf(bufIn, "%c %s %s", (shs->currentActivity == logIn ? 'A' : 'B'), login, password);
+        if (shs->act == logIn || shs->act == registering) {
+            pthread_mutex_lock(&(shs->mutex));
+            sprintf(bufIn, "%c %s", (shs->act == logIn ? 'A' : 'B'), shs->logInfo);
+            pthread_mutex_unlock(&(shs->mutex));
 
             int res = serverSession(shs->sock, bufIn, bufOut);
-            if (res)
+            if (res) { // соединение с сервером разорвано
                 shs->connected = 0;
+                shs->logged = notLogged;
+                continue;
+            }
 
+            pthread_mutex_lock(&(shs->mutex));
             printf("<<< %s\n", bufOut);
 
-            //pthread_mutex_lock(&(shs->mutex));
             if (bufOut[0] == 'N')
-                shs->logged = notLogged;
+                shs->logged = noSuchUser;
             else if (bufOut[0] == 'W')
                 shs->logged = wrongPassword;
             else if (bufOut[0] == 'E')
                 shs->logged = alreadyExists;
             else
                 shs->logged = success;
-            shs->currentActivity = mainMenu;
-            //pthread_mutex_unlock(&(shs->mutex));
+
+            shs->act = logHub;
+            pthread_mutex_unlock(&(shs->mutex));
         }
     }
 
     // закрыть сокет
-    //pthread_mutex_lock(&(shs->mutex));
+    pthread_mutex_lock(&(shs->mutex));
     closesocket(shs->sock);
     shs->connected = 0;
-    shs->currentActivity = closeApproved;
-    //pthread_mutex_unlock(&(shs->mutex));
+    shs->act = closeApproved;
+    pthread_mutex_unlock(&(shs->mutex));
 
     printf(">> Client stopped\n");
     return (void *) 0;
@@ -99,112 +100,101 @@ void * requestsRoutine(void * dta) {
 
 // окно для входа и регистрации
 void createRegWindow(sf::RenderWindow &window, SharedState * shs) {
-    sf::Texture texture;
-    sf::Sprite sprite;
-    sf::Font font;
     int drawConnectionState = -1;
-
-    texture.loadFromFile("../app_client/src/background_log.png");
-    font.loadFromFile("../app_client/src/gameFont.otf");
-
-    sprite.setTexture(texture);
-
+    sf::Texture bgTexture;
+    sf::Sprite bgSprite;
+    sf::Font font;
+    sf::Event ev{};
+    sf::RectangleShape
+            line1(sf::Vector2f(557, 2)),
+            line2(sf::Vector2f(557, 2));
     sf::Text
-        header("login or registration", font, 100),
-        connected("", font, 40), // показывает, есть ли соединение с сервером
-        version("version 1.0", font, 40),
-        text1("enter your username", font, 30),
-        text2("enter your password", font, 30),
-        errorText("", font, 50);  // текст ошибки
+            header("login or registration", font, 100),
+            connected("", font, 40), // показывает, есть ли соединение с сервером
+            version("version 1.0", font, 40),
+            text1("enter your username", font, 30),
+            text2("enter your password", font, 30),
+            errorText("", font, 50);  // текст ошибки
+    Button
+            login ("login", font, 70, 0, 171, 57),
+            reg ("register", font, 70, 0, 274, 57),
+            back ("back", font, 70, 0, 137, 57);
+    TextBox
+            log(font, 50, 557, 41),
+            pass(font, 50, 557, 41);
+
+    bgTexture.loadFromFile("../app_client/src/background_log.png");
+    font.loadFromFile("../app_client/src/gameFont.otf");
+    bgSprite.setTexture(bgTexture);
 
     header.setFillColor(sf::Color(178, 189, 231));
     header.setPosition(447, 150);
-
     connected.setPosition(1681, 970);
-
     version.setFillColor(sf::Color(255, 255, 255));
     version.setPosition(1681, 1013);
-
     text1.setFillColor(sf::Color(122, 122, 122));
     text1.setPosition(818, 427);
-
     text2.setFillColor(sf::Color(122, 122, 122));
     text2.setPosition(821, 522);
-
     errorText.setFillColor(sf::Color(176, 52, 37));
-    text2.setPosition(630, 724);
-
-    Button login ("login", font, 70, 0, 171, 57);
-    Button reg ("register", font, 70, 0, 274, 57);
-    Button back ("back", font, 70, 0, 137, 57);
-
+    errorText.setPosition(630, 724);
     login.setPosition(682, 607);
     reg.setPosition(966, 607);
     back.setPosition(45, 944);
-
-    sf::RectangleShape line1(sf::Vector2f(557, 2));
-    sf::RectangleShape line2(sf::Vector2f(557, 2));
-
     line1.setPosition(682, 417);
     line2.setPosition(682, 512);
-
-    TextBox log(font, 50, 557, 41);
-    TextBox pass(font, 50, 557, 41);
-
     log.setPosition(682, 361);
     pass.setPosition(682, 456);
 
-    while (window.isOpen() && (shs->currentActivity == logHub || shs->currentActivity > play)) {
-        sf::Event event{};
-        while (window.pollEvent(event)) {
-            if (event.type == sf::Event::Closed) {
-                //pthread_mutex_lock(&(shs->mutex));
-                shs->currentActivity = closeApp; // сигнал для закрытия потока связи с сервером
-                //pthread_mutex_unlock(&(shs->mutex));
+    while (window.isOpen() && (shs->act == logHub || shs->act > play)) {
+        while (window.pollEvent(ev)) {
+            if (ev.type == sf::Event::Closed) {
+                shs->act = closeApp;
+                continue;
             }
-            if (event.type == sf::Event::MouseMoved) {
-                login.mouseOnButton(event.mouseMove.x, event.mouseMove.y);
-                reg.mouseOnButton(event.mouseMove.x, event.mouseMove.y);
-                back.mouseOnButton(event.mouseMove.x, event.mouseMove.y);
+            if (ev.type == sf::Event::MouseMoved) {
+                login.mouseOnButton(ev.mouseMove.x, ev.mouseMove.y);
+                reg.mouseOnButton(ev.mouseMove.x, ev.mouseMove.y);
+                back.mouseOnButton(ev.mouseMove.x, ev.mouseMove.y);
+                continue;
             }
-            if (event.type == sf::Event::MouseButtonPressed) {
-                if (login.isClick(event.mouseButton.x, event.mouseButton.y)){
-                    if (shs->connected) {
-                        //pthread_mutex_lock(&(shs->mutex));
-                        shs->currentActivity = logIn; // будет сформирован запрос на вход
-                        //pthread_mutex_unlock(&(shs->mutex));
-                    } else
-                        printf("Not connected! Cannot send request!\n");
+            if (ev.type == sf::Event::MouseButtonPressed) {
+                // обработать текстовые клики по текстовым полям
+                log.changeCondition(0);
+                pass.changeCondition(0);
+                log.isClick(ev.mouseButton.x, ev.mouseButton.y);
+                pass.isClick(ev.mouseButton.x, ev.mouseButton.y);
+
+                // кнопка назад
+                if (back.isClick(ev.mouseButton.x, ev.mouseButton.y)) {
+                    shs->act = mainMenu;
+                    continue;
                 }
-                if (reg.isClick(event.mouseButton.x, event.mouseButton.y)){
-                    if (shs->connected) {
-                        //pthread_mutex_lock(&(shs->mutex));
-                        shs->currentActivity = registering; // будет сформирован запрос на регистрацию
-                        //pthread_mutex_unlock(&(shs->mutex));
-                    } else
-                        printf("Not connected! Cannot send request!\n");
+
+                // если клик не по кнопкам дальше не обрабатываем
+                if (!login.isClick(ev.mouseButton.x, ev.mouseButton.y) &&
+                    !reg.isClick(ev.mouseButton.x, ev.mouseButton.y))
+                    continue;
+
+                if (!shs->connected || !log.draw().getString().getSize() || !pass.draw().getString().getSize()) {
+                    errorText.setString(!shs->connected ? "Not connected. Cannot send request!" : "Fill the form!");
+                    continue;
                 }
-                if (back.isClick(event.mouseButton.x, event.mouseButton.y)){
-                    //pthread_mutex_lock(&(shs->mutex));
-                    shs->currentActivity = mainMenu;
-                    //pthread_mutex_unlock(&(shs->mutex));
-                }
-                if (log.isClick(event.mouseButton.x, event.mouseButton.y))
-                    pass.changeCondition(0);
-                else if (pass.isClick(event.mouseButton.x, event.mouseButton.y))
-                    log.changeCondition(0);
-                else {
-                    log.changeCondition(0);
-                    pass.changeCondition(0);
-                }
+
+                pthread_mutex_lock(&(shs->mutex));
+                login.isClick(ev.mouseButton.x, ev.mouseButton.y) ? shs->act = logIn : shs->act = registering;
+                sprintf(shs->logInfo, "%s %s",
+                        log.draw().getString().toAnsiString().c_str(),
+                        pass.draw().getString().toAnsiString().c_str());
+                pthread_mutex_unlock(&(shs->mutex));
             }
-            if (event.type == sf::Event::TextEntered){
-                if (log.isActive())
-                    if (event.text.unicode < 128)
-                        log.updateText(event.text.unicode);
-                if (pass.isActive())
-                    if (event.text.unicode < 128)
-                        pass.updateText(event.text.unicode);
+            if (ev.type == sf::Event::TextEntered){
+                // получать текст в текстовые поля
+                if (log.isActive() && ev.text.unicode < 128)
+                    log.updateText(ev.text.unicode);
+
+                if (pass.isActive() && ev.text.unicode < 128)
+                    pass.updateText(ev.text.unicode);
             }
         }
 
@@ -216,23 +206,21 @@ void createRegWindow(sf::RenderWindow &window, SharedState * shs) {
 
         if (shs->logged != notLogged && shs->logged != success) {
             if (shs->logged == noSuchUser) // нет такого логина
-                printf("No such user!\n");
+                errorText.setString("No such user!");
             else if (shs->logged == wrongPassword) // не правильный пароль
-                printf("Wrong password!\n");
+                errorText.setString("Wrong password!\n");
             else if (shs->logged == alreadyExists)  // уже занят логин
-                printf("This username already taken!\n");
+                errorText.setString("This username already taken!");
 
             shs->logged = notLogged; // сигнал о том, что вход не выполнен
         }
         else if (shs->logged == success) {
-            printf("Logged in successfully\n");
-            //pthread_mutex_lock(&(shs->mutex));
-            shs->currentActivity = mainMenu;
-            //pthread_mutex_unlock(&(shs->mutex));
+            errorText.setString("Logged in successfully");
+            shs->act = mainMenu;
         }
 
         window.clear();
-        window.draw(sprite);
+        window.draw(bgSprite);
         window.draw(header);
         window.draw(connected);
         window.draw(version);
@@ -245,72 +233,66 @@ void createRegWindow(sf::RenderWindow &window, SharedState * shs) {
         window.draw(line2);
         window.draw(log.draw());
         window.draw(pass.draw());
+        window.draw(errorText);
         window.display();
     }
 }
 
 // окно для главного меню
 void createMenuApp(sf::RenderWindow &window, SharedState * shs) {
-    sf::Texture texture;
-    sf::Sprite sprite;
-    sf::Font font;
     int DrawnConnectionState = -1;
+    sf::Texture bgTexture;
+    sf::Sprite bgSprite;
+    sf::Font font;
+    sf::Event ev{};
+    sf::Text 
+            header("Robots Game", font, 150),
+            connected("", font, 40), 
+            version("version 1.0", font, 40);
+    Button 
+            startGame ("Start game", font, 70, -1, 342, 57),
+            login ("Log in", font, 70, 0, 206, 57),
+            exit ("Exit", font, 70, 0, 137, 57);
 
-    texture.loadFromFile("../app_client/src/background_sm.png");
+    bgTexture.loadFromFile("../app_client/src/background_sm.png");
     font.loadFromFile("../app_client/src/gameFont.otf");
-
-    sprite.setTexture(texture);
-
-    sf::Text
-        header("Robots Game", font, 150),
-        connected("", font, 40), // показывает, есть ли соединение с сервером
-        version("version 1.0", font, 40);
+    bgSprite.setTexture(bgTexture);
 
     header.setFillColor(sf::Color(178, 189, 231));
     header.setPosition(150, 150);
-
     connected.setPosition(1681, 970);
-
     version.setFillColor(sf::Color(255, 255, 255));
     version.setPosition(1681, 1013);
-
-    Button startGame ("Start game", font, 70, -1, 342, 57);
-    Button login ("Log in", font, 70, 0, 206, 57);
-    Button exit ("Exit", font, 70, 0, 137, 57);
-
-    if (shs->logged == success) startGame.changeCondition(0);
-
     startGame.setPosition(155, 442);
     login.setPosition(155, 512);
     exit.setPosition(155, 582);
 
-    while (window.isOpen() && shs->currentActivity == mainMenu) {
-        sf::Event event{};
-        while (window.pollEvent(event)) {
-            if (event.type == sf::Event::Closed) {
-                //pthread_mutex_lock(&(shs->mutex));
-                shs->currentActivity = closeApp; // сигнал для закрытия потока связи с сервером
-                //pthread_mutex_unlock(&(shs->mutex));
+    if (shs->logged == success)
+        startGame.changeCondition(0);
+    
+    while (window.isOpen() && shs->act == mainMenu) {
+        while (window.pollEvent(ev)) {
+            if (ev.type == sf::Event::Closed) {
+                shs->act = closeApp;
+                continue;
             }
-            if (event.type == sf::Event::MouseMoved) {
-                startGame.mouseOnButton(event.mouseMove.x, event.mouseMove.y);
-                login.mouseOnButton(event.mouseMove.x, event.mouseMove.y);
-                exit.mouseOnButton(event.mouseMove.x, event.mouseMove.y);
+            if (ev.type == sf::Event::MouseMoved) {
+                startGame.mouseOnButton(ev.mouseMove.x, ev.mouseMove.y);
+                login.mouseOnButton(ev.mouseMove.x, ev.mouseMove.y);
+                exit.mouseOnButton(ev.mouseMove.x, ev.mouseMove.y);
+                continue;
             }
-            if (event.type == sf::Event::MouseButtonPressed) {
-                if (exit.isClick(event.mouseButton.x, event.mouseButton.y)){
-                    //pthread_mutex_lock(&(shs->mutex));
-                    shs->currentActivity = closeApp; // сигнал для закрытия потока связи с сервером
-                    //pthread_mutex_unlock(&(shs->mutex));
+            if (ev.type == sf::Event::MouseButtonPressed) {
+                if (exit.isClick(ev.mouseButton.x, ev.mouseButton.y)){
+                    shs->act = closeApp;
+                    continue;
                 }
-                if (startGame.isClick(event.mouseButton.x, event.mouseButton.y))
+                if (login.isClick(ev.mouseButton.x, ev.mouseButton.y)) {
+                    shs->act = logHub;
+                    continue;
+                }
+                if (startGame.isClick(ev.mouseButton.x, ev.mouseButton.y))
                     printf("Not Implemented 'START GAME'\n");
-
-                if (login.isClick(event.mouseButton.x, event.mouseButton.y)) {
-                    //pthread_mutex_lock(&(shs->mutex));
-                    shs->currentActivity = logHub;
-                    //pthread_mutex_unlock(&(shs->mutex));
-                }
             }
         }
 
@@ -322,7 +304,7 @@ void createMenuApp(sf::RenderWindow &window, SharedState * shs) {
         }
 
         window.clear();
-        window.draw(sprite);
+        window.draw(bgSprite);
         window.draw(header);
         window.draw(connected);
         window.draw(version);

@@ -11,7 +11,7 @@ int main() {
 
     // выделить память для объекта связи с потоком работающим с сетью
     SharedState * shs = (SharedState *) malloc(sizeof(SharedState));
-    shs->connected = 0, shs->currentActivity = mainMenu, shs->logged = notLogged;
+    shs->connected = 0, shs->act = mainMenu, shs->logged = notLogged;
     pthread_mutex_init(&(shs->mutex), NULL);
 
     // создать поток для работы с сетью
@@ -23,7 +23,7 @@ int main() {
     windowDispatcher(shs);
 
     // подождать пока поток связи закончит работу и закроется
-    while(shs->currentActivity != closeApproved);
+    while(shs->act != closeApproved);
 
     // очистить память при выходе из приложения
     pthread_mutex_destroy(&(shs->mutex));

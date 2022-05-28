@@ -25,7 +25,8 @@ typedef struct shared_state {
     int connected; // подключен ли клиент к серверу?
     SOCKET sock;   // сокет подключения
     LoginStates logged;    // выполнен ли вход?
-    Activities currentActivity; // текущая активность
+    Activities act; // текущая активность
+    char logInfo[50];
 } SharedState;
 
 // для связи с сервером, запускается в отдельном потоке
