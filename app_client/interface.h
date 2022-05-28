@@ -8,10 +8,13 @@
 #include <SFML/Graphics.hpp>
 #include <pthread.h>
 
+// константы показывающие, какое на данный момент действие выполняет приложение
 typedef enum activities {
-    mainMenu, LogHub, logIn, registering, gameLobby, play, closeApp, closeApproved
+    // константы с явно указанным значениям обозначают экраны, эти значения - индексы в массиве функций отрисовки
+    mainMenu = 0, logHub = 1, gameLobby = 2, play = 3, logIn, registering, closeApp = -1, closeApproved = -2
 } Activities;
 
+// состояния входа в аккаунт, успешно ли ? или ошибки
 typedef enum login_states {
     noSuchUser = -11, wrongPassword = -12, alreadyExists = -2, notLogged = 0, success = 1
 } LoginStates;
@@ -28,13 +31,6 @@ typedef struct shared_state {
 // для связи с сервером, запускается в отдельном потоке
 void * requestsRoutine(void * dta);
 
-// здесь начинаются активности
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-// создает экран для главного меню
-void createMenuApp(sf::RenderWindow &window, SharedState * shs);
-
-// создает экран для меню входа и регистрации
-void createRegWindow(sf::RenderWindow &window, SharedState * shs);
+void windowDispatcher(SharedState * shs);
 
 #endif //ROBOTSGAME_INTERFACE_H
