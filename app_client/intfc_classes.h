@@ -18,7 +18,7 @@ class Button {
 class TextBox {
     public:
         TextBox(const sf::Font &font, int textSize, int boxWidth, int boxHeight);
-        int isClick(int, int);
+        void isClick(int, int);
         void updateText(unsigned int);
         void setPosition(int, int);
         int isActive() const;

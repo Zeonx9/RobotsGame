@@ -91,13 +91,11 @@ int TextBox::isActive() const {
 }
 
 // проверка, нажал ли пользователь на текстовое поле
-int TextBox::isClick(int mouseX, int mouseY) {
+void TextBox::isClick(int mouseX, int mouseY) {
     int x = (int)text.getPosition().x, y = (int)text.getPosition().y;
     if (x <= mouseX && mouseX <= x + width && y + 15 <= mouseY && mouseY <= y + 15 + height) {
         condition = 1;
-        return true;
     }
-    return false;
 }
 
 // установка позиции текстового поля на экран
