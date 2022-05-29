@@ -105,15 +105,8 @@ void createRegWindow(sf::RenderWindow &window, SharedState * shs) {
     sf::Sprite bgSprite;
     sf::Font font;
     sf::Event ev{};
-    sf::RectangleShape
-            line1(sf::Vector2f(557, 2)),
-            line2(sf::Vector2f(557, 2));
     sf::Text
-            header("login or registration", font, 100),
             connected("", font, 40), // показывает, есть ли соединение с сервером
-            version("version 1.0", font, 40),
-            text1("enter your username", font, 30),
-            text2("enter your password", font, 30),
             errorText("", font, 50);  // текст ошибки
     Button
             login ("login", font, 70, 0, 171, 57),
@@ -127,22 +120,12 @@ void createRegWindow(sf::RenderWindow &window, SharedState * shs) {
     font.loadFromFile("../app_client/src/gameFont.otf");
     bgSprite.setTexture(bgTexture);
 
-    header.setFillColor(sf::Color(178, 189, 231));
-    header.setPosition(447, 150);
     connected.setPosition(1681, 970);
-    version.setFillColor(sf::Color(255, 255, 255));
-    version.setPosition(1681, 1013);
-    text1.setFillColor(sf::Color(122, 122, 122));
-    text1.setPosition(818, 427);
-    text2.setFillColor(sf::Color(122, 122, 122));
-    text2.setPosition(821, 522);
     errorText.setFillColor(sf::Color(176, 52, 37));
     errorText.setPosition(630, 724);
     login.setPosition(682, 607);
     reg.setPosition(966, 607);
     back.setPosition(45, 944);
-    line1.setPosition(682, 417);
-    line2.setPosition(682, 512);
     log.setPosition(682, 361);
     pass.setPosition(682, 456);
 
@@ -221,16 +204,10 @@ void createRegWindow(sf::RenderWindow &window, SharedState * shs) {
 
         window.clear();
         window.draw(bgSprite);
-        window.draw(header);
         window.draw(connected);
-        window.draw(version);
         window.draw(login.draw());
         window.draw(reg.draw());
         window.draw(back.draw());
-        window.draw(text1);
-        window.draw(text2);
-        window.draw(line1);
-        window.draw(line2);
         window.draw(log.draw());
         window.draw(pass.draw());
         window.draw(errorText);
@@ -245,10 +222,7 @@ void createMenuApp(sf::RenderWindow &window, SharedState * shs) {
     sf::Sprite bgSprite;
     sf::Font font;
     sf::Event ev{};
-    sf::Text 
-            header("Robots Game", font, 150),
-            connected("", font, 40), 
-            version("version 1.0", font, 40);
+    sf::Text connected("", font, 40);
     Button 
             startGame ("Start game", font, 70, -1, 342, 57),
             login ("Log in", font, 70, 0, 206, 57),
@@ -258,11 +232,7 @@ void createMenuApp(sf::RenderWindow &window, SharedState * shs) {
     font.loadFromFile("../app_client/src/gameFont.otf");
     bgSprite.setTexture(bgTexture);
 
-    header.setFillColor(sf::Color(178, 189, 231));
-    header.setPosition(150, 150);
     connected.setPosition(1681, 970);
-    version.setFillColor(sf::Color(255, 255, 255));
-    version.setPosition(1681, 1013);
     startGame.setPosition(155, 442);
     login.setPosition(155, 512);
     exit.setPosition(155, 582);
@@ -305,9 +275,7 @@ void createMenuApp(sf::RenderWindow &window, SharedState * shs) {
 
         window.clear();
         window.draw(bgSprite);
-        window.draw(header);
         window.draw(connected);
-        window.draw(version);
         window.draw(startGame.draw());
         window.draw(login.draw());
         window.draw(exit.draw());
