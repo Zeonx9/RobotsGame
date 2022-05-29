@@ -24,6 +24,8 @@ class TextBox {
         int isActive() const;
         void changeCondition(int);
         sf::Text draw();
+        const char* getChar();
+        bool isEmpty();
     private:
         sf::String input;
         sf::Text text;

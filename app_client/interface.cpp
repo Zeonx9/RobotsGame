@@ -159,16 +159,14 @@ void createRegWindow(sf::RenderWindow &window, SharedState * shs) {
                     !reg.isClick(ev.mouseButton.x, ev.mouseButton.y))
                     continue;
 
-                if (!shs->connected || !log.draw().getString().getSize() || !pass.draw().getString().getSize()) {
+                if (!shs->connected || log.isEmpty() || pass.isEmpty()) {
                     errorText.setString(!shs->connected ? "Not connected. Cannot send request!" : "Fill the form!");
                     continue;
                 }
 
                 pthread_mutex_lock(&(shs->mutex));
                 login.isClick(ev.mouseButton.x, ev.mouseButton.y) ? shs->act = logIn : shs->act = registering;
-                sprintf(shs->logInfo, "%s %s",
-                        log.draw().getString().toAnsiString().c_str(),
-                        pass.draw().getString().toAnsiString().c_str());
+                sprintf(shs->logInfo, "%s %s", log.getChar(), pass.getChar());
                 pthread_mutex_unlock(&(shs->mutex));
             }
             if (ev.type == sf::Event::TextEntered){

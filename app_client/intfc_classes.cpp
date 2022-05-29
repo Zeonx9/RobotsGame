@@ -1,7 +1,4 @@
 #include "intfc_classes.h"
-#include "stdio.h"
-#include "stdlib.h"
-#include "string.h"
 
 //конструктор класса кнопки
 Button::Button (const char *text, const sf::Font &font, int textSize, int condition, int buttonWidth, int buttonHeight) {
@@ -106,10 +103,14 @@ void TextBox::setPosition(int x, int y) {
 // при вводе текста обновляется строка
 void TextBox::updateText(unsigned int symbol) {
     if (symbol == 8){
+        if (input.getSize() == 0)
+            return;
         input.erase(input.getSize() - 1, 1);
         text.setString(input);
         return;
     }
+    if (input.getSize() == 20)
+        return;
     input += symbol;
     text.setString(input);
 }
@@ -124,3 +125,10 @@ void TextBox::changeCondition(int status) {
     condition = status;
 }
 
+const char* TextBox::getChar() {
+    return static_cast<std::string>(input).c_str();
+}
+
+bool TextBox::isEmpty() {
+    return !input.getSize();
+}
