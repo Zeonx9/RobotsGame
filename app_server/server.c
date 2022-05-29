@@ -142,7 +142,9 @@ void * clientRoutine(void * dta) {
 
         // распечатать и обработать сообщение
         printf("@@ %llu: %s\n", client, msg);
-        handleRequest(msg, respond);
+        int r = handleRequest(msg, respond);
+        if (r)
+            printf("error occurred: %d\n", r);
 
         // послать обратно
         if (send(client, respond, (int) strlen(respond) + 1, 0) == SOCKET_ERROR) {

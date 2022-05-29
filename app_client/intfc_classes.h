@@ -15,4 +15,20 @@ class Button {
         sf::Text button;
 };
 
+class TextBox {
+    public:
+        TextBox(const sf::Font &font, int textSize, int boxWidth, int boxHeight);
+        int isClick(int, int);
+        void updateText(unsigned int);
+        void setPosition(int, int);
+        int isActive() const;
+        void changeCondition(int);
+        sf::Text draw();
+    private:
+        sf::String input;
+        sf::Text text;
+        int condition, size, width, height;
+
+};
+
 #endif //ROBOTSGAME_INTFC_CLASSES_H

@@ -1,7 +1,7 @@
 #include "database.h"
+#include "sqlite/sqlite3.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include "sqlite/sqlite3.h"
 #include <string.h>
 
 /**
@@ -65,7 +65,7 @@ int registerUser(char * login, char * password){
     sqlite3 *db;
     char *zErrMsg = 0;
     int rc;
-    char sql[280];
+    char sql[600];
 
     // Открыть базу данных
     rc = sqlite3_open("../players", &db);
@@ -115,7 +115,7 @@ PlayerData *findPlayer(char* login){
 
     char *zErrMsg = 0;
     int rc;
-    char sql[60];
+    char sql[100];
     // Выделение памяти на куче для возврата из функции
     PlayerData* pd = malloc(sizeof(PlayerData));
     pd->ID = -1;

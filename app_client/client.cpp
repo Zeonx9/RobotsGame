@@ -14,7 +14,7 @@ SOCKET connectToServer() {
     SOCKADDR_IN server;
     server.sin_family = AF_INET;
     server.sin_port = htons(2205); // такой же порт как на сервере
-    server.sin_addr.S_un.S_addr = inet_addr("192.168.178.105"); // Zeon's IP адрес
+    server.sin_addr.S_un.S_addr = inet_addr(IP); // Zeon's IP адрес
 
     // инициализация соединения с сервером
     if (connect(client, (SOCKADDR *) &server, sizeof(server)) == SOCKET_ERROR) {
