@@ -115,11 +115,10 @@ void createLobby(sf::RenderWindow &window, SharedState * shs) {
     bgSprite.setTexture(bgTexture);
 
     connected.setPosition(1681, 970);
-    points.setPosition(1128, 150);
+    points.setPosition(1128, 121);
+    points.setFillColor(sf::Color(178, 189, 231));
 
-    float timeWindowOpen = 0;
-
-    while (window.isOpen() && (shs->act == logHub || shs->act > play)) {
+    while (window.isOpen() && shs->act == gameLobby) {
         while (window.pollEvent(ev)) {
             if (ev.type == sf::Event::Closed) {
                 shs->act = closeApp;
@@ -133,14 +132,10 @@ void createLobby(sf::RenderWindow &window, SharedState * shs) {
             connected.setFillColor(drawConnectionState ? sf::Color(143, 200, 99) : sf::Color(176, 52, 37));
         }
 
-        float time = (float)clock.getElapsedTime().asMicroseconds();
-        clock.restart();
-        timeWindowOpen += time;
-
-        if (timeWindowOpen < 1000) {points.setString("");}
-        else if (timeWindowOpen > 3000) {points.setString("..."); timeWindowOpen = 0;}
-        else if (timeWindowOpen > 2000) {points.setString("..");}
-        else if (timeWindowOpen > 1000) {points.setString(".");}
+        if (clock.getElapsedTime().asSeconds() > 1.f) {
+            points.setString(points.getString().getSize() == 3 ? "" : points.getString() + ".");
+            clock.restart();
+        }
 
         window.clear();
         window.draw(bgSprite);
@@ -219,7 +214,8 @@ void createRegWindow(sf::RenderWindow &window, SharedState * shs) {
 
                 pthread_mutex_lock(&(shs->mutex));
                 login.isClick(ev.mouseButton.x, ev.mouseButton.y) ? shs->act = logIn : shs->act = registering;
-                sprintf(shs->logInfo, "%s %s", log.getChar(), pass.getChar());
+                sprintf(shs->logInfo, "%s %s", log.getStr().c_str(), pass.getStr().c_str());
+                printf("%s\n", shs->logInfo);
                 pthread_mutex_unlock(&(shs->mutex));
             }
             if (ev.type == sf::Event::TextEntered){
@@ -288,7 +284,7 @@ void createMenuApp(sf::RenderWindow &window, SharedState * shs) {
     login.setPosition(155, 512);
     exit.setPosition(155, 582);
 
-    if (shs->logged == success)
+//    if (shs->logged == success)
         startGame.changeCondition(0);
     
     while (window.isOpen() && shs->act == mainMenu) {
@@ -317,7 +313,6 @@ void createMenuApp(sf::RenderWindow &window, SharedState * shs) {
                     shs->act = gameLobby;
                     continue;
                 }
-                    //printf("Not Implemented 'START GAME'\n");
             }
         }
 

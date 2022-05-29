@@ -125,8 +125,8 @@ void TextBox::changeCondition(int status) {
     condition = status;
 }
 
-const char* TextBox::getChar() {
-    return static_cast<std::string>(input).c_str();
+std::string TextBox::getStr(){
+    return text.getString();
 }
 
 bool TextBox::isEmpty() {
