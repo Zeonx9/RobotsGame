@@ -5,12 +5,13 @@
 // объявления функций для отрисовки окон
 void createMenuApp(sf::RenderWindow &window, SharedState * shs);
 void createRegWindow(sf::RenderWindow &window, SharedState * shs);
+void createLobby(sf::RenderWindow &window, SharedState * shs);
 
 // диспетчер окон приложения
 void windowDispatcher(SharedState * shs) {
     // массив указателей на функции для отрисовки соответствующих окон
     void (* windowFuncs[]) (sf::RenderWindow&, SharedState*) = {
-            createMenuApp, createRegWindow
+            createMenuApp, createRegWindow, createLobby
     };
 
     // создать окно
@@ -97,6 +98,58 @@ void * requestsRoutine(void * dta) {
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+void createLobby(sf::RenderWindow &window, SharedState * shs) {
+    int drawConnectionState = -1;
+    sf::Texture bgTexture;
+    sf::Sprite bgSprite;
+    sf::Font font;
+    sf::Event ev{};
+    sf::Clock clock;
+    sf::Text
+            points("", font, 100),
+            connected("", font, 40);
+
+    bgTexture.loadFromFile("../app_client/src/background_lobby.png");
+    font.loadFromFile("../app_client/src/gameFont.otf");
+    bgSprite.setTexture(bgTexture);
+
+    connected.setPosition(1681, 970);
+    points.setPosition(1128, 150);
+
+    float timeWindowOpen = 0;
+
+    while (window.isOpen() && (shs->act == logHub || shs->act > play)) {
+        while (window.pollEvent(ev)) {
+            if (ev.type == sf::Event::Closed) {
+                shs->act = closeApp;
+                continue;
+            }
+        }
+
+        if (drawConnectionState != shs->connected) {
+            drawConnectionState = shs->connected;
+            connected.setString(drawConnectionState ? "   connected" : "disconnected");
+            connected.setFillColor(drawConnectionState ? sf::Color(143, 200, 99) : sf::Color(176, 52, 37));
+        }
+
+        float time = (float)clock.getElapsedTime().asMicroseconds();
+        clock.restart();
+        timeWindowOpen += time;
+
+        if (timeWindowOpen < 1000) {points.setString("");}
+        else if (timeWindowOpen > 3000) {points.setString("..."); timeWindowOpen = 0;}
+        else if (timeWindowOpen > 2000) {points.setString("..");}
+        else if (timeWindowOpen > 1000) {points.setString(".");}
+
+        window.clear();
+        window.draw(bgSprite);
+        window.draw(connected);
+        window.draw(points);
+        window.display();
+    }
+
+}
 
 // окно для входа и регистрации
 void createRegWindow(sf::RenderWindow &window, SharedState * shs) {
@@ -259,8 +312,12 @@ void createMenuApp(sf::RenderWindow &window, SharedState * shs) {
                     shs->act = logHub;
                     continue;
                 }
-                if (startGame.isClick(ev.mouseButton.x, ev.mouseButton.y))
-                    printf("Not Implemented 'START GAME'\n");
+                if (startGame.isClick(ev.mouseButton.x, ev.mouseButton.y)) {
+                    createLobby(window, shs);
+                    shs->act = gameLobby;
+                    continue;
+                }
+                    //printf("Not Implemented 'START GAME'\n");
             }
         }
 
