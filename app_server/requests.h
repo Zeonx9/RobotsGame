@@ -12,7 +12,4 @@ void PlayerToString(PlayerData *pd, char *dest);
 // метод вызывает соответствующий обработчик запроса
 int handleRequest(char *in, char *out);
 
-// массив указателей на функции-обработчики
-extern int (*requestHandlers[])(char *, char *);
-
 #endif //ROBOTSGAME_REQUESTS_H

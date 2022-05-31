@@ -54,10 +54,24 @@ int reqReg(char *in, char *out) {
     return reqLogIn(in, out);
 }
 
-int handleRequest(char *in, char *out) {
-    return requestHandlers[in[0] - 'A'](in, out);
+int reqRating(char * in, char * out) {
+    int count = 5, len = 0;
+    PlayerData ** pdArr = findBestPlayers(count);
+    for (int i = 0; i < count && pdArr[i]->ID > -1; ++i) {
+        PlayerData * pd = pdArr[i];
+        // формат: позиция логин счет игры победы
+        len += sprintf(out + len, "%d\t%20s\t%d\t%d\t%d\n", i+1, pd->login, pd->highScore, pd->gamesPlayed, pd->wins);
+        free(pd);
+    }
+    free(pdArr);
+    return 0;
 }
 
-int (*requestHandlers[])(char *, char *) = {
-        reqLogIn, reqReg
-};
+int handleRequest(char *in, char *out) {
+    // массив указателей на функции
+    int (*requestHandlers[])(char *, char *) = {
+            reqLogIn, reqReg, reqRating
+    };
+
+    return requestHandlers[in[0] - 'A'](in, out);
+}
