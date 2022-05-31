@@ -110,6 +110,7 @@ void createLobby(sf::RenderWindow &window, SharedState * shs) {
             points("", font, 100),
             connected("", font, 40);
 
+    Button back ("back", font, 70, 0, 137, 57);
     bgTexture.loadFromFile("../app_client/src/background_lobby.png");
     font.loadFromFile("../app_client/src/gameFont.otf");
     bgSprite.setTexture(bgTexture);
@@ -117,12 +118,24 @@ void createLobby(sf::RenderWindow &window, SharedState * shs) {
     connected.setPosition(1681, 970);
     points.setPosition(1128, 121);
     points.setFillColor(sf::Color(178, 189, 231));
+    back.setPosition(45, 944);
 
     while (window.isOpen() && shs->act == gameLobby) {
         while (window.pollEvent(ev)) {
             if (ev.type == sf::Event::Closed) {
                 shs->act = closeApp;
                 continue;
+            }
+            if (ev.type == sf::Event::MouseMoved) {
+                back.mouseOnButton(ev.mouseMove.x, ev.mouseMove.y);
+                continue;
+            }
+            if (ev.type == sf::Event::MouseButtonPressed) {
+                // кнопка назад
+                if (back.isClick(ev.mouseButton.x, ev.mouseButton.y)) {
+                    shs->act = mainMenu;
+                    continue;
+                }
             }
         }
 
@@ -141,6 +154,7 @@ void createLobby(sf::RenderWindow &window, SharedState * shs) {
         window.draw(bgSprite);
         window.draw(connected);
         window.draw(points);
+        window.draw(back.draw());
         window.display();
     }
 
@@ -249,6 +263,8 @@ void createRegWindow(sf::RenderWindow &window, SharedState * shs) {
             shs->act = mainMenu;
         }
 
+        errorText.setPosition(960 - (errorText.getGlobalBounds().width)/2 ,724);
+
         window.clear();
         window.draw(bgSprite);
         window.draw(connected);
@@ -270,10 +286,10 @@ void createMenuApp(sf::RenderWindow &window, SharedState * shs) {
     sf::Font font;
     sf::Event ev{};
     sf::Text connected("", font, 40);
-    Button 
-            startGame ("Start game", font, 70, -1, 342, 57),
-            login ("Log in", font, 70, 0, 206, 57),
-            exit ("Exit", font, 70, 0, 137, 57);
+    Button
+            startGame("Start game", font, 70, -1, 342, 57),
+            login("Log in", font, 70, 0, 206, 57),
+            exit("Exit", font, 70, 0, 137, 57);
 
     bgTexture.loadFromFile("../app_client/src/background_sm.png");
     font.loadFromFile("../app_client/src/gameFont.otf");
@@ -285,8 +301,8 @@ void createMenuApp(sf::RenderWindow &window, SharedState * shs) {
     exit.setPosition(155, 582);
 
 //    if (shs->logged == success)
-        startGame.changeCondition(0);
-    
+    startGame.changeCondition(0);
+
     while (window.isOpen() && shs->act == mainMenu) {
         while (window.pollEvent(ev)) {
             if (ev.type == sf::Event::Closed) {
@@ -300,7 +316,7 @@ void createMenuApp(sf::RenderWindow &window, SharedState * shs) {
                 continue;
             }
             if (ev.type == sf::Event::MouseButtonPressed) {
-                if (exit.isClick(ev.mouseButton.x, ev.mouseButton.y)){
+                if (exit.isClick(ev.mouseButton.x, ev.mouseButton.y)) {
                     shs->act = closeApp;
                     continue;
                 }
