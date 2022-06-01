@@ -33,6 +33,14 @@ typedef struct shared_state {
     char * rating;
 } SharedState;
 
+typedef struct gameField{
+    char gameBoard[18][32]; // игровое поле
+    int positionFirst; // место расположения игрока 1
+    int positionSecond; // место расположения игрока 2
+    int leftCorX;
+    int leftCorY;
+}GameField;
+
 // для связи с сервером, запускается в отдельном потоке
 void * requestsRoutine(void * dta);
 
