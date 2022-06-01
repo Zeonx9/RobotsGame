@@ -6,12 +6,13 @@
 void createMenuApp(sf::RenderWindow &window, SharedState * shs);
 void createRegWindow(sf::RenderWindow &window, SharedState * shs);
 void createLobby(sf::RenderWindow &window, SharedState * shs);
+void beginGame(sf::RenderWindow &window, SharedState * shs);
 
 // диспетчер окон приложения
 void windowDispatcher(SharedState * shs) {
     // массив указателей на функции для отрисовки соответствующих окон
     void (* windowFuncs[]) (sf::RenderWindow&, SharedState*) = {
-            createMenuApp, createRegWindow, createLobby
+            createMenuApp, createRegWindow, createLobby, beginGame
     };
 
     // создать окно
@@ -111,6 +112,44 @@ void * requestsRoutine(void * dta) {
 
     printf(">> Client stopped\n");
     return (void *) 0;
+}
+
+void beginGame(sf::RenderWindow &window, SharedState * shs){
+    char** blocks = (char**)malloc(256*sizeof(char*));
+    for (int i = 0; i < 256; i += 1)
+        blocks[i] = (char*)malloc(40*sizeof(char));
+    strcpy(blocks['#'], "../app_client/src/steel.png");
+
+    FILE * file = fopen("../app_client/src/test_field", "r");
+    GameField field;
+    int counter = 0;
+    char line[40] = {};
+    while(fscanf(file, "%s", &line) != EOF) {
+        for (int i = 0; i < 32; i += 1)
+            field.gameBoard[counter][i] = line[i];
+        counter += 1;
+    }
+    field.leftCorX = field.leftCorY = 0;
+
+    sf::Texture bgTexture, blockTexture;
+    sf::Sprite bgSprite, blockSprite;
+
+    bgTexture.loadFromFile("../app_client/src/background.png");
+    bgSprite.setTexture(bgTexture);
+
+    while(window.isOpen() && shs->act == play) {
+        window.clear();
+        window.draw(bgSprite);
+        for (int i = field.leftCorY; i < field.leftCorY + 18; i += 1)
+            for (int j = field.leftCorX; j < field.leftCorX + 32; j += 1)
+                if (field.gameBoard[i][j] != '.') {
+                    blockTexture.loadFromFile(blocks[field.gameBoard[i][j]]);
+                    blockSprite.setTexture(blockTexture);
+                    blockSprite.setPosition((float)j * 60, (float)i * 60);
+                    window.draw(blockSprite);
+                }
+        window.display();
+    }
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -362,7 +401,7 @@ void createMenuApp(sf::RenderWindow &window, SharedState * shs) {
                     shs->act = logHub;
                 }
                 else if (startGame.isClick(ev.mouseButton.x, ev.mouseButton.y)) {
-                    shs->act = gameLobby;
+                    shs->act = play;
                 }
                 pthread_mutex_unlock(&(shs->mutex));
             }
