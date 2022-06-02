@@ -3,6 +3,8 @@
 
 #include "../SQL/database.h"
 
+#define JOIN_TO_GAME 555 // возвращается, если поступил запрос на создание/подключение к игре
+
 // переводит объект игрока в строку
 void StringToPlayer(PlayerData *pd, char *src);
 

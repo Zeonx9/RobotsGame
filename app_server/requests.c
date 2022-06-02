@@ -54,6 +54,7 @@ int reqReg(char *in, char *out) {
     return reqLogIn(in, out);
 }
 
+// обработчик запроса рейтинга (C)
 int reqRating(char * in, char * out) {
     int count = 5, len = 0;
     PlayerData ** pdArr = findBestPlayers(count);
@@ -67,10 +68,14 @@ int reqRating(char * in, char * out) {
     return 0;
 }
 
+int reqJoinGame(char * in, char * out) {
+    return JOIN_TO_GAME;
+}
+
 int handleRequest(char *in, char *out) {
     // массив указателей на функции
     int (*requestHandlers[])(char *, char *) = {
-            reqLogIn, reqReg, reqRating
+            reqLogIn, reqReg, reqRating, reqJoinGame
     };
 
     return requestHandlers[in[0] - 'A'](in, out);
