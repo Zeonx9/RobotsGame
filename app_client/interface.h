@@ -13,7 +13,7 @@ typedef enum activities {
     // константы с явно указанным значениям обозначают экраны, эти значения - индексы в массиве функций отрисовки
     mainMenu = 0, logHub = 1, gameLobby = 2, play = 3, // экраны приложения
     logIn, registering, // действия в окне регистрации (logHub)
-    getRating, // действие в лобби (gameLobby)
+    getRating, joinGameReq, // действие в лобби (gameLobby)
     closeApp = -1, closeApproved = -2 // закрытие окна
 } Activities;
 
@@ -31,6 +31,7 @@ typedef struct shared_state {
     Activities act; // текущая активность
     char logInfo[50];
     char * rating;
+    int gameStarted;
 } SharedState;
 
 typedef struct gameField{

@@ -100,6 +100,19 @@ void * requestsRoutine(void * dta) {
             strcpy(shs->rating, bufOut);
             shs->act = gameLobby;
         }
+        else if (shs->act == joinGameReq) {
+            sprintf(bufIn, "D");
+            int res = serverSession(shs->sock, bufIn, bufOut);
+            if (res) {
+                shs->connected = 0;
+                shs->act = gameLobby;
+                continue;
+            }
+            printf("<<< %s\n", bufOut);
+            if (bufOut[0] == 'C')
+                shs->gameStarted = 1;
+            shs->act = gameLobby;
+        }
         pthread_mutex_unlock(&(shs->mutex));
     }
 
@@ -114,45 +127,29 @@ void * requestsRoutine(void * dta) {
     return (void *) 0;
 }
 
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+// начало самой игры
 void beginGame(sf::RenderWindow &window, SharedState * shs){
-    char** blocks = (char**)malloc(256*sizeof(char*));
-    for (int i = 0; i < 256; i += 1)
-        blocks[i] = (char*)malloc(40*sizeof(char));
-    strcpy(blocks['#'], "../app_client/src/steel.png");
-
-    FILE * file = fopen("../app_client/src/test_field", "r");
-    GameField field;
-    int counter = 0;
-    char line[40] = {};
-    while(fscanf(file, "%s", &line) != EOF) {
-        for (int i = 0; i < 32; i += 1)
-            field.gameBoard[counter][i] = line[i];
-        counter += 1;
-    }
-    field.leftCorX = field.leftCorY = 0;
-
     sf::Texture bgTexture, blockTexture;
     sf::Sprite bgSprite, blockSprite;
+    sf::Event ev{};
 
     bgTexture.loadFromFile("../app_client/src/background.png");
     bgSprite.setTexture(bgTexture);
 
     while(window.isOpen() && shs->act == play) {
+        while (window.pollEvent(ev)) {
+            if (ev.type == sf::Event::Closed) {
+                pthread_mutex_lock(&(shs->mutex));
+                shs->act = closeApp;
+                pthread_mutex_unlock(&(shs->mutex));
+            }
+        }
         window.clear();
         window.draw(bgSprite);
-        for (int i = field.leftCorY; i < field.leftCorY + 18; i += 1)
-            for (int j = field.leftCorX; j < field.leftCorX + 32; j += 1)
-                if (field.gameBoard[i][j] != '.') {
-                    blockTexture.loadFromFile(blocks[field.gameBoard[i][j]]);
-                    blockSprite.setTexture(blockTexture);
-                    blockSprite.setPosition((float)j * 60, (float)i * 60);
-                    window.draw(blockSprite);
-                }
         window.display();
     }
 }
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 // окно ожидания второго игрока
 void createLobby(sf::RenderWindow &window, SharedState * shs) {
@@ -192,8 +189,9 @@ void createLobby(sf::RenderWindow &window, SharedState * shs) {
         rating.setString(shs->rating);
         free(shs->rating);
     }
+    shs->gameStarted = 0; // игра ещё не началась
 
-    while (window.isOpen() && shs->act == gameLobby) {
+    while (window.isOpen() && (shs->act == gameLobby || shs->act == joinGameReq)) {
         while (window.pollEvent(ev)) {
             if (ev.type == sf::Event::Closed) {
                 pthread_mutex_lock(&(shs->mutex));
@@ -223,6 +221,14 @@ void createLobby(sf::RenderWindow &window, SharedState * shs) {
             points.setString(points.getString().getSize() == 3 ? "" : points.getString() + ".");
             clock.restart();
         }
+
+        // если игровая сессия уже готова, то начинаем, иначе отправим запрос
+        pthread_mutex_lock(&(shs->mutex));
+        if (shs->act == gameLobby) {
+            shs->act = shs->gameStarted ? play : joinGameReq;
+            printf("game state: %d, act: %d\n", shs->gameStarted, shs->act);
+        }
+        pthread_mutex_unlock(&(shs->mutex));
 
         window.clear();
         window.draw(bgSprite);
@@ -401,7 +407,7 @@ void createMenuApp(sf::RenderWindow &window, SharedState * shs) {
                     shs->act = logHub;
                 }
                 else if (startGame.isClick(ev.mouseButton.x, ev.mouseButton.y)) {
-                    shs->act = play;
+                    shs->act = gameLobby;
                 }
                 pthread_mutex_unlock(&(shs->mutex));
             }
