@@ -3,14 +3,6 @@
 #include <strings.h>
 #include <malloc.h>
 
-void PlayerToString(PlayerData *pd, char *dest) {
-    sprintf(dest, "%d %s %s %d %d %d", pd->ID, pd->login, pd->password, pd->gamesPlayed, pd->wins, pd->highScore);
-}
-
-void StringToPlayer(PlayerData *pd, char *src) {
-    sscanf(src, "%d %s %s %d %d %d", &pd->ID, pd->login, pd->password, &pd->gamesPlayed, &pd->wins, &pd->highScore);
-}
-
 // обработчик запроса на вход (A)
 int reqLogIn(char *in, char *out) {
     char log[20] = "", pass[20] = "";
@@ -34,7 +26,7 @@ int reqLogIn(char *in, char *out) {
     }
 
     // вход успешен
-    PlayerToString(pd, out);
+    playerToString(pd, out);
     free(pd);
     return 0;
 }
@@ -69,7 +61,9 @@ int reqRating(char * in, char * out) {
 }
 
 int reqJoinGame(char * in, char * out) {
-    return JOIN_TO_GAME;
+    int id;
+    sscanf(in, "D %d", &id);
+    return JOIN_TO_GAME + id;
 }
 
 int handleRequest(char *in, char *out) {
