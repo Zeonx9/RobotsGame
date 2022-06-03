@@ -5,6 +5,9 @@
 #define ROBOTSGAME_INTERFACE_H
 
 #include "client.h"
+extern "C" {
+    #include "../SQL/data_scheme.h"
+};
 #include <SFML/Graphics.hpp>
 #include <pthread.h>
 
@@ -24,23 +27,14 @@ typedef enum login_states {
 
 // структура для связи потока связи с сервером с интерфейсом
 typedef struct shared_state {
+    char * logInfo, * rating;
+    int connected, gameStarted; // подключен ли клиент к серверу?
     pthread_mutex_t mutex;
-    int connected; // подключен ли клиент к серверу?
     SOCKET sock;   // сокет подключения
     LoginStates logged;    // выполнен ли вход?
     Activities act; // текущая активность
-    char logInfo[50];
-    char * rating;
-    int gameStarted;
+    PlayerData * player; // информация об игроке
 } SharedState;
-
-typedef struct gameField{
-    char gameBoard[18][32]; // игровое поле
-    int positionFirst; // место расположения игрока 1
-    int positionSecond; // место расположения игрока 2
-    int leftCorX;
-    int leftCorY;
-}GameField;
 
 // для связи с сервером, запускается в отдельном потоке
 void * requestsRoutine(void * dta);

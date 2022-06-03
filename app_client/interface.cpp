@@ -1,6 +1,7 @@
 #include <SFML/Audio.hpp>
 #include "interface.h"
 #include "intfc_classes.h"
+#include "game.h"
 
 // объявления функций для отрисовки окон
 void createMenuApp(sf::RenderWindow &window, SharedState * shs);
@@ -62,6 +63,7 @@ void * requestsRoutine(void * dta) {
         // логин на сервер
         if (shs->act == logIn || shs->act == registering) {
             sprintf(bufIn, "%c %s", (shs->act == logIn ? 'A' : 'B'), shs->logInfo);
+            free(shs->logInfo); shs->logInfo = NULL;
 
             int res = serverSession(shs->sock, bufIn, bufOut);
             if (res) { // соединение с сервером разорвано
@@ -78,8 +80,11 @@ void * requestsRoutine(void * dta) {
                 shs->logged = wrongPassword;
             else if (bufOut[0] == 'E')
                 shs->logged = alreadyExists;
-            else
+            else {
                 shs->logged = success;
+                shs->player = (PlayerData *) malloc(sizeof(PlayerData));
+                playerFromStr(shs->player, bufOut); // получить ID пользователя от сервера
+            }
 
             shs->act = logHub;
         }
@@ -100,8 +105,9 @@ void * requestsRoutine(void * dta) {
             strcpy(shs->rating, bufOut);
             shs->act = gameLobby;
         }
+        // подключиться к игре или создать новую
         else if (shs->act == joinGameReq) {
-            sprintf(bufIn, "D");
+            sprintf(bufIn, "D %d", shs->player->ID);
             int res = serverSession(shs->sock, bufIn, bufOut);
             if (res) {
                 shs->connected = 0;
@@ -154,6 +160,7 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
 // окно ожидания второго игрока
 void createLobby(sf::RenderWindow &window, SharedState * shs) {
     int drawConnectionState = -1;
+    char myInfo[100];
     sf::Texture bgTexture;
     sf::Sprite bgSprite;
     sf::Font font;
@@ -162,12 +169,15 @@ void createLobby(sf::RenderWindow &window, SharedState * shs) {
     sf::Text
             points("", font, 100),
             connected("", font, 40),
-            rating("", font, 50);
+            rating("", font, 50),
+            me("", font, 60);
     Button
             back ("back", font, 70, 0, 137, 57);
 
     bgTexture.loadFromFile("../app_client/src/background_lobby.png");
     font.loadFromFile("../app_client/src/gameFont.otf");
+    sprintf(myInfo, "ME\t%10s\t%d\t%d\t%d",
+            shs->player->login, shs->player->highScore, shs->player->gamesPlayed, shs->player->wins);
     bgSprite.setTexture(bgTexture);
 
     connected.setPosition(1681, 970);
@@ -175,6 +185,9 @@ void createLobby(sf::RenderWindow &window, SharedState * shs) {
     points.setFillColor(sf::Color(178, 189, 231));
     rating.setPosition(155, 512);
     back.setPosition(45, 944);
+    me.setString(myInfo);
+    me.setPosition(155, 402);
+    me.setFillColor(sf::Color(143, 200, 99));
 
     // запросить рейтинг
     pthread_mutex_lock(&(shs->mutex));
@@ -187,7 +200,7 @@ void createLobby(sf::RenderWindow &window, SharedState * shs) {
         rating.setString("Cannot get current rating!\n");
     else {
         rating.setString(shs->rating);
-        free(shs->rating);
+        free(shs->rating); shs->rating = NULL;
     }
     shs->gameStarted = 0; // игра ещё не началась
 
@@ -232,6 +245,7 @@ void createLobby(sf::RenderWindow &window, SharedState * shs) {
 
         window.clear();
         window.draw(bgSprite);
+        window.draw(me);
         window.draw(rating);
         window.draw(connected);
         window.draw(points);
@@ -307,6 +321,7 @@ void createRegWindow(sf::RenderWindow &window, SharedState * shs) {
                 } else {
                     pthread_mutex_lock(&(shs->mutex));
                     login.isClick(ev.mouseButton.x, ev.mouseButton.y) ? shs->act = logIn : shs->act = registering;
+                    shs->logInfo = (char *) malloc(50 * sizeof(char));
                     sprintf(shs->logInfo, "%s %s", log.getStr().c_str(), pass.getStr().c_str());
                     pthread_mutex_unlock(&(shs->mutex));
                     printf("%s\n", shs->logInfo);
@@ -383,7 +398,7 @@ void createMenuApp(sf::RenderWindow &window, SharedState * shs) {
     login.setPosition(155, 512);
     exit.setPosition(155, 582);
 
-//    if (shs->logged == success)
+    if (shs->logged == success)
         startGame.changeCondition(0);
 
     while (window.isOpen() && shs->act == mainMenu) {
