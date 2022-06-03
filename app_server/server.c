@@ -59,10 +59,10 @@ void * GameRoutine(void * dta) {
     free(game);
 }
 
-JoinStates handleJoinRequest(SharedData * shd, SOCKET self) {
+JoinStates handleJoinRequest(SharedData * shd, SOCKET self, int id) {
     printf("handling hasGame=%d, toNotify=%d, gamePtr=%p\n", shd->gManager.hasActiveGame, shd->gManager.notifyFirst, shd->gManager.game);
     if (shd->gManager.hasActiveGame) {
-        if (shd->gManager.game->client1 == self) {
+        if (shd->gManager.game->id1 == id) { // сравнение идет по ID
             if (shd->gManager.notifyFirst) {
                 shd->gManager.hasActiveGame = 0;
                 shd->gManager.game = NULL;
@@ -71,6 +71,7 @@ JoinStates handleJoinRequest(SharedData * shd, SOCKET self) {
             return waiting; // повторный запрос
         }
         shd->gManager.game->client2 = self;
+        shd->gManager.game->id2 = id;
         shd->gManager.notifyFirst = 1;
         return justJoined; // игра уже была инициализирована, и клиент присоединился к существующей
     }
@@ -79,7 +80,9 @@ JoinStates handleJoinRequest(SharedData * shd, SOCKET self) {
     shd->gManager.notifyFirst = 0;
     shd->gManager.game = (Game *) malloc(sizeof(Game));
     shd->gManager.game->client1 = self;
+    shd->gManager.game->id1 = id;
     shd->gManager.game->client2 = INVALID_SOCKET;
+    shd->gManager.game->id2 = -1;
 
     // создать поток в котором будет обрабатываться игра
     pthread_t newGameTread;
@@ -184,8 +187,9 @@ void * clientRoutine(void * dta) {
         // распечатать и обработать сообщение
         printf("@@ %llu: %s\n", client, msg);
         int r = handleRequest(msg, respond);
-        if (r == JOIN_TO_GAME) { // обработать ситуацию подключения к игровой сессии
-            JoinStates result = handleJoinRequest(shd, client);
+        if (r > JOIN_TO_GAME) { // обработать ситуацию подключения к игровой сессии
+            int id  = r - JOIN_TO_GAME;
+            JoinStates result = handleJoinRequest(shd, client, id);
             sprintf(respond, result == justCreated || result == waiting ? "W" : "C");
             printf("request handled res=%d respond=%s\n", result, respond);
         }

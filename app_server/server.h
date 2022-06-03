@@ -30,6 +30,7 @@ typedef enum joinStates {
 } JoinStates;
 
 typedef struct game {
+    int id1, id2;
     SOCKET client1, client2;
 } Game;
 
