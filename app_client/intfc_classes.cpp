@@ -1,7 +1,4 @@
 #include "intfc_classes.h"
-#include "stdio.h"
-#include "stdlib.h"
-#include "string.h"
 
 //конструктор класса кнопки
 Button::Button (const char *text, const sf::Font &font, int textSize, int condition, int buttonWidth, int buttonHeight) {
@@ -91,13 +88,11 @@ int TextBox::isActive() const {
 }
 
 // проверка, нажал ли пользователь на текстовое поле
-int TextBox::isClick(int mouseX, int mouseY) {
+void TextBox::isClick(int mouseX, int mouseY) {
     int x = (int)text.getPosition().x, y = (int)text.getPosition().y;
     if (x <= mouseX && mouseX <= x + width && y + 15 <= mouseY && mouseY <= y + 15 + height) {
         condition = 1;
-        return true;
     }
-    return false;
 }
 
 // установка позиции текстового поля на экран
@@ -108,10 +103,14 @@ void TextBox::setPosition(int x, int y) {
 // при вводе текста обновляется строка
 void TextBox::updateText(unsigned int symbol) {
     if (symbol == 8){
+        if (input.getSize() == 0)
+            return;
         input.erase(input.getSize() - 1, 1);
         text.setString(input);
         return;
     }
+    if (input.getSize() == 20)
+        return;
     input += symbol;
     text.setString(input);
 }
@@ -126,3 +125,10 @@ void TextBox::changeCondition(int status) {
     condition = status;
 }
 
+std::string TextBox::getStr(){
+    return text.getString();
+}
+
+bool TextBox::isEmpty() {
+    return !input.getSize();
+}

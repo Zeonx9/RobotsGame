@@ -11,7 +11,8 @@ int main() {
 
     // выделить память для объекта связи с потоком работающим с сетью
     SharedState * shs = (SharedState *) malloc(sizeof(SharedState));
-    shs->connected = 0, shs->act = mainMenu, shs->logged = notLogged;
+    shs->connected = shs->gameStarted = 0, shs->act = mainMenu, shs->logged = notLogged;
+    shs->player = NULL;
     pthread_mutex_init(&(shs->mutex), NULL);
 
     // создать поток для работы с сетью
@@ -27,6 +28,8 @@ int main() {
 
     // очистить память при выходе из приложения
     pthread_mutex_destroy(&(shs->mutex));
+    if (shs->player)
+        free(shs->player);
     free(shs);
     return 0;
 }

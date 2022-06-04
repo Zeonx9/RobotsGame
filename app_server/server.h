@@ -24,6 +24,22 @@ typedef struct list_clients_ {
     ClientNode * self;
 } ClientsList;
 
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+typedef enum joinStates {
+    justCreated, justJoined, waiting, completed
+} JoinStates;
+
+typedef struct game {
+    int id1, id2;
+    SOCKET client1, client2;
+} Game;
+
+typedef struct games_manager {
+    int hasActiveGame;
+    Game *game;
+    int notifyFirst;
+} GamesManager;
+
 // содержит указатели на объекты связи между потоками клиентов и сервером
 // упаковка нужных аргументов для потока создания клиентов
 typedef struct shared_data {
@@ -31,6 +47,7 @@ typedef struct shared_data {
     SOCKET sock;
     pthread_mutex_t mutex;
     int shutdown;
+    GamesManager gManager;
 } SharedData;
 
 // = функции для списка =

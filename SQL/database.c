@@ -1,5 +1,5 @@
 #include "database.h"
-#include "sqlite/sqlite3.h"
+#include "../sqlite/sqlite3.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -204,7 +204,7 @@ PlayerData **findBestPlayers(int count){
         fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
     }
 
-    PlayerData** pd = malloc(sizeof(count));
+    PlayerData** pd = malloc(sizeof(PlayerData *) * count);
     // Заполнение всех ID по стандарту -1
     for (int i = 0; i < count; ++i) {
         pd[i] = malloc(sizeof(PlayerData));

@@ -3,14 +3,6 @@
 #include <strings.h>
 #include <malloc.h>
 
-void PlayerToString(PlayerData *pd, char *dest) {
-    sprintf(dest, "%d %s %s %d %d %d", pd->ID, pd->login, pd->password, pd->gamesPlayed, pd->wins, pd->highScore);
-}
-
-void StringToPlayer(PlayerData *pd, char *src) {
-    sscanf(src, "%d %s %s %d %d %d", &pd->ID, pd->login, pd->password, &pd->gamesPlayed, &pd->wins, &pd->highScore);
-}
-
 // обработчик запроса на вход (A)
 int reqLogIn(char *in, char *out) {
     char log[20] = "", pass[20] = "";
@@ -34,7 +26,7 @@ int reqLogIn(char *in, char *out) {
     }
 
     // вход успешен
-    PlayerToString(pd, out);
+    playerToString(pd, out);
     free(pd);
     return 0;
 }
@@ -54,10 +46,31 @@ int reqReg(char *in, char *out) {
     return reqLogIn(in, out);
 }
 
-int handleRequest(char *in, char *out) {
-    return requestHandlers[in[0] - 'A'](in, out);
+// обработчик запроса рейтинга (C)
+int reqRating(char * in, char * out) {
+    int count = 5, len = 0;
+    PlayerData ** pdArr = findBestPlayers(count);
+    for (int i = 0; i < count && pdArr[i]->ID > -1; ++i) {
+        PlayerData * pd = pdArr[i];
+        // формат: позиция логин счет игры победы
+        len += sprintf(out + len, "%d\t%20s\t%d\t%d\t%d\n", i+1, pd->login, pd->highScore, pd->gamesPlayed, pd->wins);
+        free(pd);
+    }
+    free(pdArr);
+    return 0;
 }
 
-int (*requestHandlers[])(char *, char *) = {
-        reqLogIn, reqReg
-};
+int reqJoinGame(char * in, char * out) {
+    int id;
+    sscanf(in, "D %d", &id);
+    return JOIN_TO_GAME + id;
+}
+
+int handleRequest(char *in, char *out) {
+    // массив указателей на функции
+    int (*requestHandlers[])(char *, char *) = {
+            reqLogIn, reqReg, reqRating, reqJoinGame
+    };
+
+    return requestHandlers[in[0] - 'A'](in, out);
+}
