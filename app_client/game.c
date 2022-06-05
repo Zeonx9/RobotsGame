@@ -4,7 +4,9 @@ void initPlayer(Player *p) {
     p->y = p->x = 0;
     p->dx = p->dy = 0;
     p->onGround = 0;
-    p->curFrame = 0;
+}
+void initAnimator(Animator *a) {
+    a->curFrame = 0;
 }
 
 void updatePlayer(Player *p, float t) {

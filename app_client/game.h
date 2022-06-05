@@ -9,18 +9,16 @@ typedef enum directions {
     Left = -1, Right = 1
 } Directions;
 
-typedef struct gameField{
-    char gameBoard[18][32]; // игровое поле
-    int positionFirst; // место расположения игрока 1
-    int positionSecond; // место расположения игрока 2
-    int leftCorX;
-    int leftCorY;
-}GameField;
-
 typedef struct player {
-    float dx, dy, y, x, dir, curFrame;
+    float dx, dy, y, x, dir;
     int onGround;
 } Player;
+
+typedef struct animator {
+    float curFrame;
+} Animator;
+
+void initAnimator(Animator *a);
 
 void initPlayer(Player *p);
 void updatePlayer(Player *p, float t);
