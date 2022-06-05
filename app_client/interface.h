@@ -4,10 +4,10 @@
 #ifndef ROBOTSGAME_INTERFACE_H
 #define ROBOTSGAME_INTERFACE_H
 
-#include "client.h"
 extern "C" {
     #include "../SQL/data_scheme.h"
 };
+#include "client.h"
 #include <SFML/Graphics.hpp>
 #include <pthread.h>
 

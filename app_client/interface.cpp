@@ -134,14 +134,39 @@ void * requestsRoutine(void * dta) {
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+// передвижение и анимация персонажа
+void animatePlayer(Player * p, float t, sf::Sprite &s) {
+    t /= 500;
+    updatePlayer(p, t);
+
+    p->curFrame += .0075f * t; // анимация
+    if (p->curFrame >= 12)
+        p->curFrame = 0;
+    if (p->dx > 0)  s.setTextureRect(sf::IntRect(WIDTH * (int)p->curFrame, 0, WIDTH, HEIGHT));
+    if (p->dx < 0)  s.setTextureRect(sf::IntRect(WIDTH * (int)(p->curFrame + 1), 0, -WIDTH, HEIGHT));
+    if (p->dx == 0) {
+        if (p->dir > 0) s.setTextureRect(sf::IntRect(WIDTH * 13, 0, WIDTH, HEIGHT));
+        else s.setTextureRect(sf::IntRect(WIDTH * 14, 0, -WIDTH, HEIGHT));
+    }
+
+    s.setPosition(p->x, p->y);
+    p->dx = 0;
+}
+
 // начало самой игры
 void beginGame(sf::RenderWindow &window, SharedState * shs){
-    sf::Texture bgTexture, blockTexture;
-    sf::Sprite bgSprite, blockSprite;
+    sf::Texture bgTexture, playerTexture;
+    sf::Sprite bgSprite, playerSprite;
     sf::Event ev{};
+    sf::Clock clock;
 
     bgTexture.loadFromFile("../app_client/src/background.png");
+    playerTexture.loadFromFile("../app_client/src/robotgamesprites.png");
     bgSprite.setTexture(bgTexture);
+    playerSprite.setTexture(playerTexture);
+
+    Player player;
+    initPlayer(&player);
 
     while(window.isOpen() && shs->act == play) {
         while (window.pollEvent(ev)) {
@@ -151,11 +176,30 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
                 pthread_mutex_unlock(&(shs->mutex));
             }
         }
+
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Q)) {
+            pthread_mutex_lock(&(shs->mutex));
+            shs->act = closeApp;
+            pthread_mutex_unlock(&(shs->mutex));
+        }
+
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right))
+            walk(&player, Right);
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
+            walk(&player, Left);
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up))
+            leap(&player);
+
+        // передвинуть персонажа и анимировать его
+        animatePlayer(&player, (float) clock.restart().asMicroseconds(), playerSprite);
+
         window.clear();
         window.draw(bgSprite);
+        window.draw(playerSprite);
         window.display();
     }
 }
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 // окно ожидания второго игрока
 void createLobby(sf::RenderWindow &window, SharedState * shs) {
