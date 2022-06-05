@@ -1,7 +1,7 @@
 #ifndef ROBOTSGAME_GAME_H
 #define ROBOTSGAME_GAME_H
 
-#define GROUND 900
+#define GROUND 600
 #define WIDTH 80
 #define HEIGHT 120
 
@@ -10,15 +10,10 @@ typedef enum directions {
 } Directions;
 
 typedef struct player {
-    float dx, dy, y, x, dir;
+    float dx, dy, y, x, dir, curFrame;
     int onGround;
 } Player;
 
-typedef struct animator {
-    float curFrame;
-} Animator;
-
-void initAnimator(Animator *a);
 
 void initPlayer(Player *p);
 void updatePlayer(Player *p, float t);
