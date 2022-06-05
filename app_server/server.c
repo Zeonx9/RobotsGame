@@ -60,26 +60,32 @@ void * GameRoutine(void * dta) {
     while (1) {
         // получить информацию от обоих игроков
         int res1 = recv(game->client1, in1, 1025, 0);
-        int res2 = recv(game->client2, in2, 1025, 0);
-        if (!res1 || !res2 || res1 == SOCKET_ERROR || res2 == SOCKET_ERROR) {
-            printf("!! player disconnected\n");
-            send(game->client1, no, 3, 0);
+        if (!res1 || res1 == SOCKET_ERROR) { // организатор отключился
+            printf("!! player1 disconnected recv\n");
             send(game->client2, no, 3, 0);
             break;
         }
 
+        int res2 = recv(game->client2, in2, 1025, 0);
+        if (!res2 || res2 == SOCKET_ERROR) {
+            printf("!! player2 disconnected recv\n");
+            send(game->client1, no, 3, 0);
+            break;
+        }
 
         //memcpy(&game->player1, in1, sizeof(Player));
         //memcpy(&game->player2, in2, sizeof(Player));
         //printf("p1: %.1f %.1f, p2: %.1f %.1f\n", game->player1.x, game->player1.y, game->player2.x, game->player2.y);
 
         // отправить каждому игроку информацию о другом
-        res1 = send(game->client1, in2, sizeof(Player), 0);
-        res2 = send(game->client2, in1, sizeof(Player), 0);
-        if (res1 == SOCKET_ERROR || res2 == SOCKET_ERROR) {
-            printf("!! player disconnected\n");
-            send(game->client1, no, 3, 0);
+        if (send(game->client1, in2, sizeof(Player), 0) == SOCKET_ERROR) {
+            printf("!! player1 disconnected send\n");
             send(game->client2, no, 3, 0);
+            break;
+        }
+        if (send(game->client2, in1, sizeof(Player), 0) == SOCKET_ERROR) {
+            printf("!! player2 disconnected send\n");
+            send(game->client1, no, 3, 0);
             break;
         }
     }

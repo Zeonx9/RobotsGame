@@ -137,15 +137,15 @@ void * requestsRoutine(void * dta) {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // передвижение и анимация персонажа
-void animatePlayer(Player * p, float t, sf::Sprite &s) {
+void animatePlayer(Player * p, Animator *a, float t, sf::Sprite &s) {
     t /= 500;
     updatePlayer(p, t);
 
-    p->curFrame += .0075f * t; // анимация
-    if (p->curFrame >= 12)
-        p->curFrame = 0;
-    if (p->dx > 0)  s.setTextureRect(sf::IntRect(WIDTH * (int)p->curFrame, 0, WIDTH, HEIGHT));
-    if (p->dx < 0)  s.setTextureRect(sf::IntRect(WIDTH * (int)(p->curFrame + 1), 0, -WIDTH, HEIGHT));
+    a->curFrame += .0075f * t; // анимация
+    if (a->curFrame >= 12)
+        a->curFrame = 0;
+    if (p->dx > 0)  s.setTextureRect(sf::IntRect(WIDTH * (int)a->curFrame, 0, WIDTH, HEIGHT));
+    if (p->dx < 0)  s.setTextureRect(sf::IntRect(WIDTH * (int)(a->curFrame + 1), 0, -WIDTH, HEIGHT));
     if (p->dx == 0) {
         if (p->dir > 0) s.setTextureRect(sf::IntRect(WIDTH * 13, 0, WIDTH, HEIGHT));
         else s.setTextureRect(sf::IntRect(WIDTH * 14, 0, -WIDTH, HEIGHT));
@@ -171,6 +171,9 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
     Player player1, player2;
     initPlayer(&player1);
     initPlayer(&player2);
+    Animator a1, a2;
+    initAnimator(&a1);
+    initAnimator(&a2);
     char buffer[1025];
 
     while(window.isOpen() && shs->act == play) {
@@ -196,7 +199,7 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
             leap(&player1);
 
         // обращение к серверу, чтобы получить информацию о другом игроке
-        //if (timer.getElapsedTime().asMilliseconds() > 1000 / 60) {
+        if (timer.getElapsedTime().asMilliseconds() > 1000 / 40) {
 
             pthread_mutex_lock(&(shs->mutex));
             int res = fastServerSession(shs->sock, &player1, &player2, sizeof(Player));
@@ -208,13 +211,13 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
             //printf("p1: %f %f, p2 %f %f\n", player1.x, player1.y, player2.x, player2.y);
             pthread_mutex_unlock(&(shs->mutex));
 
-//            timer.restart();
-//        }
+            timer.restart();
+        }
 
         // передвинуть персонажа и анимировать его
         float time = (float) clock.restart().asMicroseconds();
-        animatePlayer(&player1, time, s1);
-        animatePlayer(&player2, time, s2);
+        animatePlayer(&player1, &a1, time, s1);
+        animatePlayer(&player2, &a2, time, s2);
 
         window.clear();
         window.draw(bgSprite);
