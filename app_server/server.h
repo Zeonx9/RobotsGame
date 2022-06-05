@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <winsock2.h>
 #include <pthread.h>
+#include "../app_client/game.h"
 
 // = структуры =
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -32,6 +33,7 @@ typedef enum joinStates {
 typedef struct game {
     int id1, id2;
     SOCKET client1, client2;
+    Player player1, player2;
 } Game;
 
 typedef struct games_manager {
@@ -48,6 +50,7 @@ typedef struct shared_data {
     pthread_mutex_t mutex;
     int shutdown;
     GamesManager gManager;
+    pthread_t newGameThread;
 } SharedData;
 
 // = функции для списка =
