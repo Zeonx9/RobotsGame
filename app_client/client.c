@@ -49,3 +49,25 @@ int serverSession(SOCKET client, char *bufferIn, char *bufferOut) {
     return 0;
 }
 
+int fastServerSession(SOCKET client, char * bufferIn, int sizeIn, char *bufferOut) {
+    // отправить сообщение на север
+    if (send(client, bufferIn, sizeIn, 0) == SOCKET_ERROR) {
+        printf("!! CANNOT SEND MASSAGE\n");
+        closesocket(client);
+        return 1;
+    }
+
+    // получить ответ от сервера
+    int rc = SOCKET_ERROR;
+    while (rc == SOCKET_ERROR) {
+        rc = recv(client, bufferOut, 1025, 0);
+        if (!rc || rc == WSAECONNRESET) {
+            printf("!! CONNECTION CLOSED\n");
+            closesocket(client);
+            return 2;
+        }
+    }
+
+    return 0;
+}
+
