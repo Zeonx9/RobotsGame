@@ -135,9 +135,9 @@ void * requestsRoutine(void * dta) {
 void * exchangeData(void * data) {
     NeededData  * nda = (NeededData *) data;
     while (!nda->res) {
-        pthread_mutex_lock(nda->mutex);
+        //pthread_mutex_lock(nda->mutex);
         nda->res = fastServerSession(nda->sock, nda->p1, nda->p2, sizeof(Player));
-        pthread_mutex_unlock(nda->mutex);
+        //pthread_mutex_unlock(nda->mutex);
         if (strcmp((char *) nda->p2, "NO") == 0) {
             printf("DISCONNECTED\n");
             nda->res = 1;
@@ -177,6 +177,8 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
     bgSprite.setTexture(bgTexture);
     s1.setTexture(playerTexture);
     s2.setTexture(playerTexture);
+    s1.setColor(sf::Color::Red);
+    s2.setColor(sf::Color::Blue);
 
     Player player1, player2;
     initPlayer(&player1);
@@ -186,23 +188,23 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
     initAnimator(&a2);
 
     // запуск нового потока для обмена информацией с сервером
-    pthread_mutex_t m;
-    pthread_mutex_init(&m, NULL);
+//    pthread_mutex_t m;
+    //pthread_mutex_init(&m, NULL);
 
 
-    NeededData nd = {&player1, &player2, shs->sock, &m, 0};
-    pthread_t exchange;
-    pthread_create(&exchange, NULL, exchangeData, (void *)&nd);
-    pthread_detach(exchange);
+//    NeededData nd = {&player1, &player2, shs->sock, &m, 0};
+//    pthread_t exchange;
+//    pthread_create(&exchange, NULL, exchangeData, (void *)&nd);
+//    pthread_detach(exchange);
 
 
     while(window.isOpen() && shs->act == play) {
-        if (nd.res) { // выход в главное меню
-            pthread_mutex_lock(&(shs->mutex));
-            shs->act = mainMenu;
-            pthread_mutex_unlock(&(shs->mutex));
-        }
-
+//        if (nd.res) { // выход в главное меню
+//            pthread_mutex_lock(&(shs->mutex));
+//            shs->act = mainMenu;
+//            pthread_mutex_unlock(&(shs->mutex));
+//        }
+//
         while (window.pollEvent(ev)) {
             if (ev.type == sf::Event::Closed) {
                 pthread_mutex_lock(&(shs->mutex));
@@ -217,21 +219,37 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
             pthread_mutex_unlock(&(shs->mutex));
         }
 
-        pthread_mutex_lock(&m);
+        //pthread_mutex_lock(&m);
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right))
             walk(&player1, Right);
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
             walk(&player1, Left);
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up))
             leap(&player1);
-        pthread_mutex_unlock(&m);
+        //pthread_mutex_unlock(&m);
+
+        if (send(shs->sock, (char *)&player1, sizeof(Player), 0) == SOCKET_ERROR) {
+            printf("CANNOT SEND\n");
+            pthread_mutex_lock(&(shs->mutex));
+            shs->act = mainMenu;
+            pthread_mutex_unlock(&(shs->mutex));
+        }
+
+        float time = (float) clock.restart().asMicroseconds();
+        //pthread_mutex_lock(&m);
+        animatePlayer(&player1, &a1, time, s1);
 
         // передвинуть персонажа и анимировать его
-        float time = (float) clock.restart().asMicroseconds();
-        pthread_mutex_lock(&m);
-        animatePlayer(&player1, &a1, time, s1);
+        int res = recv(shs->sock, (char *)&player2, sizeof(Player), 0);
+        if (!res || res == SOCKET_ERROR || strcmp((char *)&player2, "NO") == 0) {
+            printf("CANNOT RECEIVE OR CLIENT DISCONNECTED\n");
+            pthread_mutex_lock(&(shs->mutex));
+            shs->act = mainMenu;
+            pthread_mutex_unlock(&(shs->mutex));
+        }
+
         animatePlayer(&player2, &a2, time, s2);
-        pthread_mutex_unlock(&m);
+        //pthread_mutex_unlock(&m);
 
         window.clear();
         window.draw(bgSprite);
@@ -239,7 +257,7 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
         window.draw(s2);
         window.display();
     }
-    pthread_mutex_destroy(&m);
+    //pthread_mutex_destroy(&m);
 }
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
