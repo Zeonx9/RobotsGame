@@ -108,6 +108,7 @@ JoinStates handleJoinRequest(SharedData * shd, SOCKET self, int id) {
     shd->gManager.game = (Game *) malloc(sizeof(Game));
     shd->gManager.game->client1 = self;
     shd->gManager.game->firstId = id;
+    shd->gManager.game->client2 = INVALID_SOCKET;
     shd->gManager.hasActiveGame = 1;
     shd->gManager.notifyFirst = 0;
 
