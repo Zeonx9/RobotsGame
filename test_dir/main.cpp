@@ -31,12 +31,14 @@ int startWindow() {
     Clock clock;
     Event event{};
     Texture texture;
-    Sprite sprite1;
+    Sprite sprite1, sprite2;
     texture.loadFromFile("../app_client/src/robotgamesprites.png");
     sprite1.setTexture(texture);
+    sprite2.setTexture(texture);
 
-    Player player;
-    initPlayer(&player);
+    Player player1, player2;
+    initPlayer(&player1);
+    initPlayer(&player2);
 
 
     while (window.isOpen()) {
@@ -48,16 +50,26 @@ int startWindow() {
             window.close(); // закрытие окна
 
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right))
-            walk(&player, right);
+            walk(&player1, Right);
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
-            walk(&player, left);
+            walk(&player1, Left);
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up))
-            leap(&player);
+            leap(&player1);
 
-        animatePlayer(&player, (float) clock.restart().asMicroseconds(), sprite1);
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::D))
+            walk(&player2, Right);
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::A))
+            walk(&player2, Left);
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space))
+            leap(&player2);
+
+        float time = (float) clock.restart().asMicroseconds();
+        animatePlayer(&player1, time, sprite1);
+        animatePlayer(&player2, time, sprite2);
 
         window.clear(Color(30, 30, 60));
         window.draw(sprite1);
+        window.draw(sprite2);
         window.display();
     }
     return 0;

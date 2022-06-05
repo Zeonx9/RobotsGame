@@ -166,6 +166,7 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
     playerTexture.loadFromFile("../app_client/src/robotgamesprites.png");
     bgSprite.setTexture(bgTexture);
     s1.setTexture(playerTexture);
+    s2.setTexture(playerTexture);
 
     Player player1, player2;
     initPlayer(&player1);
@@ -195,7 +196,7 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
             leap(&player1);
 
         // обращение к серверу, чтобы получить информацию о другом игроке
-        if (timer.getElapsedTime().asMilliseconds() > 1000 / 10) {
+        //if (timer.getElapsedTime().asMilliseconds() > 1000 / 60) {
 
             pthread_mutex_lock(&(shs->mutex));
             int res = fastServerSession(shs->sock, &player1, &player2, sizeof(Player));
@@ -204,11 +205,11 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
                 if (shs->act > 0)
                     shs->act = mainMenu;
             }
-            printf("p1: %f %f, p2 %f %f\n", player1.x, player1.y, player2.x, player2.y);
+            //printf("p1: %f %f, p2 %f %f\n", player1.x, player1.y, player2.x, player2.y);
             pthread_mutex_unlock(&(shs->mutex));
 
-            timer.restart();
-        }
+//            timer.restart();
+//        }
 
         // передвинуть персонажа и анимировать его
         float time = (float) clock.restart().asMicroseconds();
