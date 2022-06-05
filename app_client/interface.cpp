@@ -1,7 +1,9 @@
 #include <SFML/Audio.hpp>
 #include "interface.h"
 #include "intfc_classes.h"
-#include "game.h"
+extern "C" {
+    #include "game.h"
+}
 
 // объявления функций для отрисовки окон
 void createMenuApp(sf::RenderWindow &window, SharedState * shs);
