@@ -68,8 +68,10 @@ void * GameRoutine(void * dta) {
             break;
         }
 
-//        memcpy(&game->player1, in1, sizeof(Player));
-//        memcpy(&game->player2, in2, sizeof(Player));
+
+        memcpy(&game->player1, in1, sizeof(Player));
+        memcpy(&game->player2, in2, sizeof(Player));
+        printf("p1: %.1f %.1f, p2: %.1f %.1f\n", game->player1.x, game->player1.y, game->player2.x, game->player2.y);
 
         // отправить каждому игроку информацию о другом
         res1 = send(game->client1, in2, sizeof(Player), 0);

@@ -169,6 +169,7 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
 
     Player player1, player2;
     initPlayer(&player1);
+    initPlayer(&player2);
     char buffer[1025];
 
     while(window.isOpen() && shs->act == play) {
@@ -194,16 +195,16 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
             leap(&player1);
 
         // обращение к серверу, чтобы получить информацию о другом игроке
-        if (timer.getElapsedTime().asMilliseconds() > 1000 / 30) {
+        if (timer.getElapsedTime().asMilliseconds() > 1000 / 10) {
 
             pthread_mutex_lock(&(shs->mutex));
-            memcpy(buffer, &player1, sizeof(Player));
-            int res = fastServerSession(shs->sock, buffer, sizeof(Player), buffer);
+            int res = fastServerSession(shs->sock, &player1, &player2, sizeof(Player));
             if (res || strcmp(buffer, "NO") == 0) {
                 printf("DISCONNECTED");
-                shs->act = mainMenu;
+                if (shs->act > 0)
+                    shs->act = mainMenu;
             }
-            memcpy(&player2, buffer, sizeof(Player));
+            printf("p1: %f %f, p2 %f %f\n", player1.x, player1.y, player2.x, player2.y);
             pthread_mutex_unlock(&(shs->mutex));
 
             timer.restart();

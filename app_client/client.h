@@ -14,6 +14,6 @@ SOCKET connectToServer();
 // отправить что-то на сервер, получить ответ
 int serverSession(SOCKET client, char * bufferIn, char * bufferOut);
 
-int fastServerSession(SOCKET client, char * bufferIn, int sizeIn, char *bufferOut);
+int fastServerSession(SOCKET client, void *bufferIn, void *bufferOut, int size);
 
 #endif //ROBOTSGAME_CLIENT_H
