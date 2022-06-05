@@ -7,6 +7,7 @@
 extern "C" {
     #include "../SQL/data_scheme.h"
     #include "client.h"
+    #include "game.h"
 };
 #include <SFML/Graphics.hpp>
 #include <pthread.h>
@@ -35,6 +36,13 @@ typedef struct shared_state {
     Activities act; // текущая активность
     PlayerData * player; // информация об игроке
 } SharedState;
+
+typedef struct needed_data {
+    Player *p1, *p2;
+    SOCKET sock;
+    pthread_mutex_t *mutex;
+    int res;
+} NeededData;
 
 // для связи с сервером, запускается в отдельном потоке
 void * requestsRoutine(void * dta);
