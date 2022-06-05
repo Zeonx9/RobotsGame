@@ -72,5 +72,7 @@ int handleRequest(char *in, char *out) {
             reqLogIn, reqReg, reqRating, reqJoinGame
     };
 
+    if (in[0] < 'A' || 'D' < in[0])
+        return -356;
     return requestHandlers[in[0] - 'A'](in, out);
 }
