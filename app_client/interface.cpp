@@ -1,9 +1,6 @@
 #include <SFML/Audio.hpp>
 #include "interface.h"
 #include "intfc_classes.h"
-extern "C" {
-    #include "game.h"
-}
 
 // объявления функций для отрисовки окон
 void createMenuApp(sf::RenderWindow &window, SharedState * shs);
@@ -135,6 +132,19 @@ void * requestsRoutine(void * dta) {
     return (void *) 0;
 }
 
+void * exchangeData(void * data) {
+    NeededData  * nda = (NeededData *) data;
+    while (!nda->res) {
+        pthread_mutex_lock(nda->mutex);
+        nda->res = fastServerSession(nda->sock, nda->p1, nda->p2, sizeof(Player));
+        pthread_mutex_unlock(nda->mutex);
+        if (strcmp((char *) nda->p2, "NO") == 0) {
+            printf("DISCONNECTED\n");
+            nda->res = 1;
+        }
+    }
+}
+
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // передвижение и анимация персонажа
 void animatePlayer(Player * p, Animator *a, float t, sf::Sprite &s) {
@@ -174,9 +184,25 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
     Animator a1, a2;
     initAnimator(&a1);
     initAnimator(&a2);
-    char buffer[1025];
+
+    // запуск нового потока для обмена информацией с сервером
+    pthread_mutex_t m;
+    pthread_mutex_init(&m, NULL);
+
+
+    NeededData nd = {&player1, &player2, shs->sock, &m, 0};
+    pthread_t exchange;
+    pthread_create(&exchange, NULL, exchangeData, (void *)&nd);
+    pthread_detach(exchange);
+
 
     while(window.isOpen() && shs->act == play) {
+        if (nd.res) { // выход в главное меню
+            pthread_mutex_lock(&(shs->mutex));
+            shs->act = mainMenu;
+            pthread_mutex_unlock(&(shs->mutex));
+        }
+
         while (window.pollEvent(ev)) {
             if (ev.type == sf::Event::Closed) {
                 pthread_mutex_lock(&(shs->mutex));
@@ -191,33 +217,21 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
             pthread_mutex_unlock(&(shs->mutex));
         }
 
+        pthread_mutex_lock(&m);
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right))
             walk(&player1, Right);
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
             walk(&player1, Left);
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up))
             leap(&player1);
-
-        // обращение к серверу, чтобы получить информацию о другом игроке
-        if (timer.getElapsedTime().asMilliseconds() > 1000 / 40) {
-
-            pthread_mutex_lock(&(shs->mutex));
-            int res = fastServerSession(shs->sock, &player1, &player2, sizeof(Player));
-            if (res || strcmp(buffer, "NO") == 0) {
-                printf("DISCONNECTED");
-                if (shs->act > 0)
-                    shs->act = mainMenu;
-            }
-            //printf("p1: %f %f, p2 %f %f\n", player1.x, player1.y, player2.x, player2.y);
-            pthread_mutex_unlock(&(shs->mutex));
-
-            timer.restart();
-        }
+        pthread_mutex_unlock(&m);
 
         // передвинуть персонажа и анимировать его
         float time = (float) clock.restart().asMicroseconds();
+        pthread_mutex_lock(&m);
         animatePlayer(&player1, &a1, time, s1);
         animatePlayer(&player2, &a2, time, s2);
+        pthread_mutex_unlock(&m);
 
         window.clear();
         window.draw(bgSprite);
@@ -225,6 +239,7 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
         window.draw(s2);
         window.display();
     }
+    pthread_mutex_destroy(&m);
 }
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
