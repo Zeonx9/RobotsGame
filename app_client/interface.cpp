@@ -158,17 +158,18 @@ void animatePlayer(Player * p, float t, sf::Sprite &s) {
 // начало самой игры
 void beginGame(sf::RenderWindow &window, SharedState * shs){
     sf::Texture bgTexture, playerTexture;
-    sf::Sprite bgSprite, playerSprite;
+    sf::Sprite bgSprite, s1, s2;
     sf::Event ev{};
-    sf::Clock clock;
+    sf::Clock clock, timer;
 
     bgTexture.loadFromFile("../app_client/src/background.png");
     playerTexture.loadFromFile("../app_client/src/robotgamesprites.png");
     bgSprite.setTexture(bgTexture);
-    playerSprite.setTexture(playerTexture);
+    s1.setTexture(playerTexture);
 
-    Player player;
-    initPlayer(&player);
+    Player player1, player2;
+    initPlayer(&player1);
+    char buffer[1025];
 
     while(window.isOpen() && shs->act == play) {
         while (window.pollEvent(ev)) {
@@ -186,18 +187,37 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
         }
 
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right))
-            walk(&player, Right);
+            walk(&player1, Right);
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
-            walk(&player, Left);
+            walk(&player1, Left);
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up))
-            leap(&player);
+            leap(&player1);
+
+        // обращение к серверу, чтобы получить информацию о другом игроке
+        if (timer.getElapsedTime().asMilliseconds() > 1000 / 30) {
+
+            pthread_mutex_lock(&(shs->mutex));
+            memcpy(buffer, &player1, sizeof(Player));
+            int res = fastServerSession(shs->sock, buffer, sizeof(Player), buffer);
+            if (res || strcmp(buffer, "NO") == 0) {
+                printf("DISCONNECTED");
+                shs->act = mainMenu;
+            }
+            memcpy(&player2, buffer, sizeof(Player));
+            pthread_mutex_unlock(&(shs->mutex));
+
+            timer.restart();
+        }
 
         // передвинуть персонажа и анимировать его
-        animatePlayer(&player, (float) clock.restart().asMicroseconds(), playerSprite);
+        float time = (float) clock.restart().asMicroseconds();
+        animatePlayer(&player1, time, s1);
+        animatePlayer(&player2, time, s2);
 
         window.clear();
         window.draw(bgSprite);
-        window.draw(playerSprite);
+        window.draw(s1);
+        window.draw(s2);
         window.display();
     }
 }

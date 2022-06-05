@@ -6,8 +6,8 @@
 
 extern "C" {
     #include "../SQL/data_scheme.h"
+    #include "client.h"
 };
-#include "client.h"
 #include <SFML/Graphics.hpp>
 #include <pthread.h>
 
