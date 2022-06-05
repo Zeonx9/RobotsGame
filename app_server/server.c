@@ -51,8 +51,7 @@ void deleteList(ClientsList * list) {
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 void * GameRoutine(void * dta) {
     Game * game = (Game *) dta;
-    // TODO функция игры со стороны сервера
-    // тут будут взаимодействовать 2 подключенных клиента
+
     printf("game started\n");
     while (game->client2 == INVALID_SOCKET); // ожидание подключения второго клиента
     char in1[1025], in2[1025], no[] = "NO";
@@ -72,10 +71,6 @@ void * GameRoutine(void * dta) {
             send(game->client1, no, 3, 0);
             break;
         }
-
-        //memcpy(&game->player1, in1, sizeof(Player));
-        //memcpy(&game->player2, in2, sizeof(Player));
-        //printf("p1: %.1f %.1f, p2: %.1f %.1f\n", game->player1.x, game->player1.y, game->player2.x, game->player2.y);
 
         // отправить каждому игроку информацию о другом
         if (send(game->client1, in2, sizeof(Player), 0) == SOCKET_ERROR) {
@@ -97,7 +92,7 @@ void * GameRoutine(void * dta) {
 JoinStates handleJoinRequest(SharedData * shd, SOCKET self, int id) {
     //printf("handling hasGame=%d, toNotify=%d, gamePtr=%p\n", shd->gManager.hasActiveGame, shd->gManager.notifyFirst, shd->gManager.game);
     if (shd->gManager.hasActiveGame) {
-        if (shd->gManager.game->id1 == id) { // сравнение идет по ID
+        if (shd->gManager.game->firstId == id) { // сравнение идет по ID
             if (shd->gManager.notifyFirst) {
                 shd->gManager.hasActiveGame = 0;
                 shd->gManager.game = NULL;
@@ -106,25 +101,20 @@ JoinStates handleJoinRequest(SharedData * shd, SOCKET self, int id) {
             return waiting; // повторный запрос
         }
         shd->gManager.game->client2 = self;
-        shd->gManager.game->id2 = id;
         shd->gManager.notifyFirst = 1;
         return justJoined; // игра уже была инициализирована, и клиент присоединился к существующей
     }
 
-    shd->gManager.hasActiveGame = 1;
-    shd->gManager.notifyFirst = 0;
     shd->gManager.game = (Game *) malloc(sizeof(Game));
     shd->gManager.game->client1 = self;
-    shd->gManager.game->id1 = id;
-    shd->gManager.game->client2 = INVALID_SOCKET;
-    shd->gManager.game->id2 = -1;
+    shd->gManager.game->firstId = id;
+    shd->gManager.hasActiveGame = 1;
+    shd->gManager.notifyFirst = 0;
 
     // создать поток в котором будет обрабатываться игра
     pthread_create(&shd->newGameThread, NULL, GameRoutine, (void *) shd->gManager.game);
-    printf("new game thread created\n");
     return justCreated; // игр не было, создается новая и ожидает второго игрока
 }
-
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 SOCKET createServer(SharedData *dta) {
@@ -224,7 +214,6 @@ void * clientRoutine(void * dta) {
             int id  = r - JOIN_TO_GAME;
             JoinStates result = handleJoinRequest(shd, client, id);
             sprintf(respond, result == justCreated || result == waiting ? "W" : "C");
-            //printf("request handled res=%d respond=%s\n", result, respond);
         }
         else if (r)
             printf("error occurred: %d\n", r);
@@ -236,13 +225,10 @@ void * clientRoutine(void * dta) {
         }
 
         // если был успешно начат новый игровой поток, то данный поток ожидает его завершения
-        if (respond[0] == 'C') {
-            printf("waiting for game thread: %llu\n", shd->newGameThread);
-            pthread_t k = shd->newGameThread;
+        if (respond[0] == 'C')
             pthread_join(shd->newGameThread, NULL);
-            printf("game thread ended: %llu\n", k);
-        }
     }
+
     // клиент отключился, удаляем из списка
     pthread_mutex_lock(&(shd->mutex));
     ClientNode *node = popClient(shd->list, client);
