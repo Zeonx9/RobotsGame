@@ -1,7 +1,7 @@
 #ifndef ROBOTSGAME_GAME_H
 #define ROBOTSGAME_GAME_H
 
-#define GROUND 600
+#define GROUND 900
 #define WIDTH 80
 #define HEIGHT 120
 

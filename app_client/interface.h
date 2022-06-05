@@ -37,13 +37,6 @@ typedef struct shared_state {
     PlayerData * player; // информация об игроке
 } SharedState;
 
-typedef struct needed_data {
-    Player *p1, *p2;
-    SOCKET sock;
-    pthread_mutex_t *mutex;
-    int res;
-} NeededData;
-
 // для связи с сервером, запускается в отдельном потоке
 void * requestsRoutine(void * dta);
 
