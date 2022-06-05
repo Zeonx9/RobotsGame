@@ -1,55 +1,63 @@
 #include <SFML/Graphics.hpp>
 #include <SFML/Audio.hpp>
+extern "C" {
+    #include "../app_client/game.h"
+}
 
 using namespace sf;
 
-int startWindow() {
-    RenderWindow window(VideoMode(800, 600), "Tupa Bounce Ball");
+void animatePlayer(Player * p, float t, sf::Sprite &s) {
+    t /= 500;
+    updatePlayer(p, t);
 
-    CircleShape circle;
-    circle.setRadius(50); circle.setPosition(0, 500);
-    circle.setFillColor(Color::Yellow);
+    p->curFrame += .0075f * t; // анимация
+    if (p->curFrame >= 12)
+        p->curFrame = 0;
+    if (p->dx > 0)  s.setTextureRect(sf::IntRect(WIDTH * (int)p->curFrame, 0, WIDTH, HEIGHT));
+    if (p->dx < 0)  s.setTextureRect(sf::IntRect(WIDTH * (int)(p->curFrame + 1), 0, -WIDTH, HEIGHT));
+    if (p->dx == 0) {
+        if (p->dir > 0) s.setTextureRect(sf::IntRect(WIDTH * 13, 0, WIDTH, HEIGHT));
+        else s.setTextureRect(sf::IntRect(WIDTH * 14, 0, -WIDTH, HEIGHT));
+    }
+
+    s.setPosition(p->x, p->y);
+    p->dx = 0;
+}
+
+int startWindow() {
+    RenderWindow window(VideoMode(1920, 1080), "Tupa Bounce Ball");
     window.setFramerateLimit(60);
 
-    Clock clk;
-    float speed = 300;
-    bool onGround = true;
-    float dy;
-    float a = 10;
+    Clock clock;
+    Event event{};
+    Texture texture;
+    Sprite sprite1;
+    texture.loadFromFile("../app_client/src/robotgamesprites.png");
+    sprite1.setTexture(texture);
 
-    Music music;
-    music.openFromFile("music.wav");
-    music.setLoop(true);
-    music.play();
+    Player player;
+    initPlayer(&player);
+
 
     while (window.isOpen()) {
-        Event event{};
         while (window.pollEvent(event))
             if (event.type == Event::Closed)
                 window.close();
 
-        window.clear(Color::Black);
+        if (Keyboard::isKeyPressed(Keyboard::Q))
+            window.close(); // закрытие окна
 
-        float t = (float) clk.restart().asMilliseconds();
-        if (Keyboard::isKeyPressed(Keyboard::A) && circle.getPosition().x > 0)
-            circle.move(-speed * t / 1000, 0);
-        if (Keyboard::isKeyPressed(Keyboard::D) && circle.getPosition().x < 700)
-            circle.move(speed * t / 1000, 0);
-        if (Keyboard::isKeyPressed(Keyboard::W) && onGround ) {
-            dy = -50;
-            onGround = false;
-        }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right))
+            walk(&player, right);
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
+            walk(&player, left);
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up))
+            leap(&player);
 
-        if (!onGround) {
-            circle.move(0, dy);
-            dy += 2 * a * t / 100;
-            if (circle.getPosition().y > 500) {
-                circle.setPosition(circle.getPosition().x, 500);
-                onGround = true;
-            }
-        }
+        animatePlayer(&player, (float) clock.restart().asMicroseconds(), sprite1);
 
-        window.draw(circle);
+        window.clear(Color(30, 30, 60));
+        window.draw(sprite1);
         window.display();
     }
     return 0;

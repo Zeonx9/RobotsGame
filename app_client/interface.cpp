@@ -1,7 +1,9 @@
 #include <SFML/Audio.hpp>
 #include "interface.h"
 #include "intfc_classes.h"
-#include "game.h"
+extern "C" {
+    #include "game.h"
+}
 
 // объявления функций для отрисовки окон
 void createMenuApp(sf::RenderWindow &window, SharedState * shs);
@@ -134,14 +136,40 @@ void * requestsRoutine(void * dta) {
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+// передвижение и анимация персонажа
+void animatePlayer(Player * p, float t, sf::Sprite &s) {
+    t /= 500;
+    updatePlayer(p, t);
+
+    p->curFrame += .0075f * t; // анимация
+    if (p->curFrame >= 12)
+        p->curFrame = 0;
+    if (p->dx > 0)  s.setTextureRect(sf::IntRect(WIDTH * (int)p->curFrame, 0, WIDTH, HEIGHT));
+    if (p->dx < 0)  s.setTextureRect(sf::IntRect(WIDTH * (int)(p->curFrame + 1), 0, -WIDTH, HEIGHT));
+    if (p->dx == 0) {
+        if (p->dir > 0) s.setTextureRect(sf::IntRect(WIDTH * 13, 0, WIDTH, HEIGHT));
+        else s.setTextureRect(sf::IntRect(WIDTH * 14, 0, -WIDTH, HEIGHT));
+    }
+
+    s.setPosition(p->x, p->y);
+    p->dx = 0;
+}
+
 // начало самой игры
 void beginGame(sf::RenderWindow &window, SharedState * shs){
-    sf::Texture bgTexture, blockTexture;
-    sf::Sprite bgSprite, blockSprite;
+    sf::Texture bgTexture, playerTexture;
+    sf::Sprite bgSprite, s1, s2;
     sf::Event ev{};
+    sf::Clock clock, timer;
 
     bgTexture.loadFromFile("../app_client/src/background.png");
+    playerTexture.loadFromFile("../app_client/src/robotgamesprites.png");
     bgSprite.setTexture(bgTexture);
+    s1.setTexture(playerTexture);
+
+    Player player1, player2;
+    initPlayer(&player1);
+    char buffer[1025];
 
     while(window.isOpen() && shs->act == play) {
         while (window.pollEvent(ev)) {
@@ -151,11 +179,49 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
                 pthread_mutex_unlock(&(shs->mutex));
             }
         }
+
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Q)) {
+            pthread_mutex_lock(&(shs->mutex));
+            shs->act = closeApp;
+            pthread_mutex_unlock(&(shs->mutex));
+        }
+
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right))
+            walk(&player1, Right);
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
+            walk(&player1, Left);
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up))
+            leap(&player1);
+
+        // обращение к серверу, чтобы получить информацию о другом игроке
+        if (timer.getElapsedTime().asMilliseconds() > 1000 / 30) {
+
+            pthread_mutex_lock(&(shs->mutex));
+            memcpy(buffer, &player1, sizeof(Player));
+            int res = fastServerSession(shs->sock, buffer, sizeof(Player), buffer);
+            if (res || strcmp(buffer, "NO") == 0) {
+                printf("DISCONNECTED");
+                shs->act = mainMenu;
+            }
+            memcpy(&player2, buffer, sizeof(Player));
+            pthread_mutex_unlock(&(shs->mutex));
+
+            timer.restart();
+        }
+
+        // передвинуть персонажа и анимировать его
+        float time = (float) clock.restart().asMicroseconds();
+        animatePlayer(&player1, time, s1);
+        animatePlayer(&player2, time, s2);
+
         window.clear();
         window.draw(bgSprite);
+        window.draw(s1);
+        window.draw(s2);
         window.display();
     }
 }
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 // окно ожидания второго игрока
 void createLobby(sf::RenderWindow &window, SharedState * shs) {
