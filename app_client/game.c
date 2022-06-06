@@ -3,8 +3,7 @@
 void initPlayer(Player *p) {
     p->y = p->x = 0;
     p->dx = p->dy = 0;
-    p->onGround = 0;
-    p->curFrame = 0;
+    p->onGround = p->jumped = 0;
 }
 
 void updatePlayer(Player *p, float t) {
@@ -32,5 +31,5 @@ void leap(Player *p) {
         return;
     p->dy = -0.7f;
     p->onGround = 0;
-    p->curFrame = 0;
+    p->jumped = 1;
 }

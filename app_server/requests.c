@@ -1,10 +1,9 @@
 #include "requests.h"
 #include <stdio.h>
 #include <strings.h>
-#include <malloc.h>
 
 // обработчик запроса на вход (A)
-int reqLogIn(char *in, char *out) {
+int reqLogIn(char *in, char *out, SharedData *shd) {
     char log[20] = "", pass[20] = "";
     sscanf(in, "A %s %s", log, pass);
 
@@ -32,7 +31,7 @@ int reqLogIn(char *in, char *out) {
 }
 
 // обработчик запроса на регистрацию (B)
-int reqReg(char *in, char *out) {
+int reqReg(char *in, char *out, SharedData *shd) {
     char log[20] = "", pass[20] = "";
     sscanf(in, "B %s %s", log, pass);
 
@@ -43,11 +42,11 @@ int reqReg(char *in, char *out) {
     }
 
     in[0] = 'A';
-    return reqLogIn(in, out);
+    return reqLogIn(in, out, shd);
 }
 
 // обработчик запроса рейтинга (C)
-int reqRating(char * in, char * out) {
+int reqRating(char * in, char * out, SharedData *shd) {
     int count = 5, len = 0;
     PlayerData ** pdArr = findBestPlayers(count);
     for (int i = 0; i < count && pdArr[i]->ID > -1; ++i) {
@@ -60,19 +59,51 @@ int reqRating(char * in, char * out) {
     return 0;
 }
 
-int reqJoinGame(char * in, char * out) {
+// обработчик запроса на присоединение к игре или созданию
+int reqJoinGame(char * in, char * out, SharedData *shd) {
+    SOCKET sock = shd->sock;
     int id;
     sscanf(in, "D %d", &id);
-    return JOIN_TO_GAME + id;
+    if (!shd->gManager.hasActiveGame) {
+        shd->gManager.game = (Game *) malloc(sizeof(Game));
+        shd->gManager.hasActiveGame = 1;
+        shd->gManager.game->id1 = id;
+        shd->gManager.game->client1 = sock;
+        shd->gManager.game->client2 = INVALID_SOCKET;
+        sprintf(out, "W");
+        return 0;
+    }
+    if (shd->gManager.game->id1 == id) {
+        if (shd->gManager.game->client2 != INVALID_SOCKET) {
+            sprintf(out, "C");
+            shd->gManager.hasActiveGame = 0;
+            return JOIN_TO_GAME;
+        }
+        sprintf(out, "W");
+        return 0;
+    }
+
+    sprintf(out, "C");
+    shd->gManager.game->id2 = id;
+    shd->gManager.game->client2 = sock;
+    return 0;
 }
 
-int handleRequest(char *in, char *out) {
+int reqCancelGame(char * in, char * out, SharedData *shd) {
+    free(shd->gManager.game);
+    shd->gManager.hasActiveGame = 0;
+    sprintf(out, "O");
+    return 0;
+}
+
+// диспетчер обработчиков запросов
+int handleRequest(char *in, char *out, SharedData *shd) {
     // массив указателей на функции
-    int (*requestHandlers[])(char *, char *) = {
-            reqLogIn, reqReg, reqRating, reqJoinGame
+    int (*requestHandlers[])(char *, char *, SharedData*) = {
+            reqLogIn, reqReg, reqRating, reqJoinGame, reqCancelGame
     };
 
-    if (in[0] < 'A' || 'D' < in[0])
+    if (in[0] < 'A' || 'E' < in[0])
         return -356;
-    return requestHandlers[in[0] - 'A'](in, out);
+    return requestHandlers[in[0] - 'A'](in, out, shd);
 }

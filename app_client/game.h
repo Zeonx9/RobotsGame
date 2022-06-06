@@ -10,8 +10,8 @@ typedef enum directions {
 } Directions;
 
 typedef struct player {
-    float dx, dy, y, x, dir, curFrame;
-    int onGround;
+    float dx, dy, y, x, dir;
+    int onGround, jumped;
 } Player;
 
 
