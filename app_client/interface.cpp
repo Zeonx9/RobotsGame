@@ -209,15 +209,11 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
     initPlayer(&player1);
     initPlayer(&player2);
 
-    u_long mode = 1;  // 1 to enable non-blocking socket
-    ioctlsocket(client, FIONBIO, &mode);
-
     // отправить первый сигнал
-    char no[3] = "NO", buffer[101] = "";
-    int len = sendto(client, (const char *) &player1, sizeof(Player), 0, (SOCKADDR *) &server, sizeof(server));
-    printf("server: %s:%d\nfirst msg was sent! len=%d(%d)\n", inet_ntoa(server.sin_addr), ntohs(server.sin_port), len, WSAGetLastError());
-    len = recvfrom(client, (char *) &player2, sizeof(Player), 0, (SOCKADDR *) &server, &size);
-    printf("respond got(%d)", len);
+    char no[3] = "NO";
+    sendto(client, (const char *) &player1, sizeof(Player), 0, (SOCKADDR *) &server, sizeof(server));
+    recvfrom(client, (char *) &player2, sizeof(Player), 0, (SOCKADDR *) &server, &size);
+    printf("sockets tested\n");
 
     while(window.isOpen() && shs->act == play) {
         while (window.pollEvent(ev)) {
@@ -232,6 +228,7 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
 
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Q)) {
             sendto(client, no, 3, 0, (SOCKADDR *) &server, sizeof(server));
+            printf("no sent\n");
             pthread_mutex_lock(&(shs->mutex));
             shs->act = closeApp;
             pthread_mutex_unlock(&(shs->mutex));
@@ -247,19 +244,18 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
         // отправить информацию о себе
         sendto(client, (const char *) &player1, sizeof(Player), 0, (SOCKADDR *) &server, sizeof(server));
         animatePlayer(&player1, (float) clock1.restart().asMicroseconds(), s1, &animation1);
+        printf("sent\n");
 
         // получить информацию о сопернике
-        len = recvfrom(client, buffer, 100, 0, (SOCKADDR *) &server, &size);
-        if (strcmp(buffer, "NO") == 0) {
+        recvfrom(client, (char *)&player2, sizeof(Player), 0, (SOCKADDR *) &server, &size);
+        if (strcmp((char *)&player2, "NO") == 0) {
             printf("disconnected\n");
             pthread_mutex_lock(&(shs->mutex));
             if (shs->act > 0) shs->act = mainMenu;
             pthread_mutex_unlock(&(shs->mutex));
         }
-        if (len == sizeof(player)) {
-            memcpy(&player2, buffer, len);
-            animatePlayer(&player2, (float) clock2.restart().asMicroseconds(), s2, &animation2);
-        }
+        animatePlayer(&player2, (float) clock2.restart().asMicroseconds(), s2, &animation2);
+        printf("received\n");
 
         window.clear();
         window.draw(bgSprite);
