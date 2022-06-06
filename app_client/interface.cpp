@@ -174,8 +174,7 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
     bgSprite.setTexture(bgTexture);
     s1.setTexture(playerTexture);
     s2.setTexture(playerTexture);
-    s1.setColor(sf::Color::Green);
-    s2.setColor(sf::Color::Yellow);
+    s2.setColor(sf::Color(255, 180, 180));
 
     Player player1, player2;
     float animation1, animation2;
