@@ -134,24 +134,28 @@ void * requestsRoutine(void * dta) {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // передвижение и анимация персонажа
-void animatePlayer(Player * p, float t, sf::Sprite &s) {
+void animatePlayer(Player * p, float t, sf::Sprite &s, float *frame) {
     t /= 500;
     updatePlayer(p, t);
 
-    p->curFrame += .0075f * t; // анимация
-    if (p->curFrame >= 12)
-        p->curFrame = 0;
+    *frame += .0075f * t; // анимация
+    if (*frame >= 12)
+        *frame = 0;
+    if (p->jumped){
+        *frame = 0;
+        p->jumped = 0;
+    }
 
-    if (p->onGround) { // ходьба
-        if (p->dx > 0)  s.setTextureRect(sf::IntRect(WIDTH * (int)p->curFrame, 0, WIDTH, HEIGHT));
-        if (p->dx < 0)  s.setTextureRect(sf::IntRect(WIDTH * (int)(p->curFrame + 1), 0, -WIDTH, HEIGHT));
+    if (p->onGround) {
+        if (p->dx > 0)  s.setTextureRect(sf::IntRect(WIDTH * (int)(*frame), 0, WIDTH, HEIGHT));
+        if (p->dx < 0)  s.setTextureRect(sf::IntRect(WIDTH * (int)(*frame + 1), 0, -WIDTH, HEIGHT));
         if (p->dx == 0) {
             if (p->dir > 0) s.setTextureRect(sf::IntRect(WIDTH * 13, 0, WIDTH, HEIGHT));
             else s.setTextureRect(sf::IntRect(WIDTH * 14, 0, -WIDTH, HEIGHT));
         }
-    } else { // прыжок
-        if (p->dir > 0) s.setTextureRect(sf::IntRect(WIDTH * (int)p->curFrame, HEIGHT, WIDTH, HEIGHT));
-        else s.setTextureRect(sf::IntRect(WIDTH * (int)(p->curFrame + 1), HEIGHT, -WIDTH, HEIGHT));
+    } else {
+        if (p->dir > 0) s.setTextureRect(sf::IntRect(WIDTH * (int)(*frame), HEIGHT, WIDTH, HEIGHT));
+        else s.setTextureRect(sf::IntRect(WIDTH * (int)(*frame+ 1), HEIGHT, -WIDTH, HEIGHT));
     }
 
     s.setPosition(p->x, p->y);
@@ -174,6 +178,7 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
     s2.setColor(sf::Color::Yellow);
 
     Player player1, player2;
+    float animation1, animation2;
     initPlayer(&player1);
     initPlayer(&player2);
 
@@ -207,9 +212,6 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
             pthread_mutex_unlock(&(shs->mutex));
         }
 
-        float time = (float) clock.restart().asMicroseconds();
-        animatePlayer(&player1, time, s1);
-
         // получить информацию о сопернике
         int res = recv(shs->sock, (char *)&player2, sizeof(Player), 0);
         if (!res || res == SOCKET_ERROR || strcmp((char *)&player2, "NO") == 0) {
@@ -219,7 +221,9 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
             pthread_mutex_unlock(&(shs->mutex));
         }
 
-        animatePlayer(&player2, time, s2);
+        float time = (float) clock.restart().asMicroseconds();
+        animatePlayer(&player1, time, s1, &animation1);
+        animatePlayer(&player2, time, s2, &animation2);
 
         window.clear();
         window.draw(bgSprite);
