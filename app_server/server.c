@@ -234,12 +234,12 @@ void * gameRoutine(void * dta) {
             memcpy(in1, in, sizeof(Player));
             memcpy(&player, in, sizeof(Player));
             printf("from 1: %.1f, %.1f\n", player.x, player.y);
-            sendto(game->server, in2, sizeof(Player), 0, (SOCKADDR *) &client2, sizeof(client2));
+            sendto(game->server, in2, sizeof(Player), 0, (SOCKADDR *) &client1, sizeof(client));
         } else {
             memcpy(in2, in, sizeof(Player));
             memcpy(&player, in, sizeof(Player));
             printf("from 2: %.1f, %.1f\n", player.x, player.y);
-            sendto(game->server, in1, sizeof(Player), 0, (SOCKADDR *) &client1, sizeof(client));
+            sendto(game->server, in1, sizeof(Player), 0, (SOCKADDR *) &client2, sizeof(client));
         }
     }
     closesocket(game->server);

@@ -242,18 +242,21 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
             leap(&player1);
 
         // отправить информацию о себе
-        sendto(client, (const char *) &player1, sizeof(Player), 0, (SOCKADDR *) &server, sizeof(server));
-        //printf("another data(%d) sent(%d)\n", len, WSAGetLastError());
+        len = sendto(client, (const char *) &player1, sizeof(Player), 0, (SOCKADDR *) &server, sizeof(server));
+        if (len != sizeof(Player))
+            printf("sendto error(%d):%d\n", len, WSAGetLastError());
         animatePlayer(&player1, (float) clock1.restart().asMicroseconds(), s1, &animation1);
 
         // получить информацию о сопернике
-        recvfrom(client, (char *) &player2, sizeof(player2), 0, (SOCKADDR *) &server, &size);
+        len = recvfrom(client, (char *) &player2, sizeof(player2), 0, (SOCKADDR *) &server, &size);
         if (strcmp((char *)&player2, "NO") == 0) {
             printf("disconnected\n");
             pthread_mutex_lock(&(shs->mutex));
             if (shs->act > 0) shs->act = mainMenu;
             pthread_mutex_unlock(&(shs->mutex));
         }
+        if (len != sizeof(Player))
+            printf("recvfrom error(%d):%d", len, WSAGetLastError());
         animatePlayer(&player2, (float) clock2.restart().asMicroseconds(), s2, &animation2);
 
         window.clear();
