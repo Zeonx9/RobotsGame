@@ -209,8 +209,11 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
     initPlayer(&player1);
     initPlayer(&player2);
 
+    u_long mode = 1;  // 1 to enable non-blocking socket
+    ioctlsocket(client, FIONBIO, &mode);
+
     // отправить первый сигнал
-    char no[3] = "NO";
+    char no[3] = "NO", buffer[101] = "";
     int len = sendto(client, (const char *) &player1, sizeof(Player), 0, (SOCKADDR *) &server, sizeof(server));
     printf("server: %s:%d\nfirst msg was sent! len=%d(%d)\n", inet_ntoa(server.sin_addr), ntohs(server.sin_port), len, WSAGetLastError());
     len = recvfrom(client, (char *) &player2, sizeof(Player), 0, (SOCKADDR *) &server, &size);
@@ -242,27 +245,26 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
             leap(&player1);
 
         // отправить информацию о себе
-        len = sendto(client, (const char *) &player1, sizeof(Player), 0, (SOCKADDR *) &server, sizeof(server));
-        if (len != sizeof(Player))
-            printf("sendto error(%d):%d\n", len, WSAGetLastError());
+        sendto(client, (const char *) &player1, sizeof(Player), 0, (SOCKADDR *) &server, sizeof(server));
         animatePlayer(&player1, (float) clock1.restart().asMicroseconds(), s1, &animation1);
 
         // получить информацию о сопернике
-        len = recvfrom(client, (char *) &player2, sizeof(player2), 0, (SOCKADDR *) &server, &size);
-        if (strcmp((char *)&player2, "NO") == 0) {
+        len = recvfrom(client, buffer, 100, 0, (SOCKADDR *) &server, &size);
+        if (strcmp(buffer, "NO") == 0) {
             printf("disconnected\n");
             pthread_mutex_lock(&(shs->mutex));
             if (shs->act > 0) shs->act = mainMenu;
             pthread_mutex_unlock(&(shs->mutex));
         }
-        if (len != sizeof(Player))
-            printf("recvfrom error(%d):%d", len, WSAGetLastError());
-        animatePlayer(&player2, (float) clock2.restart().asMicroseconds(), s2, &animation2);
+        if (len == sizeof(player)) {
+            memcpy(&player2, buffer, len);
+            animatePlayer(&player2, (float) clock2.restart().asMicroseconds(), s2, &animation2);
+        }
 
         window.clear();
         window.draw(bgSprite);
-        window.draw(s1);
         window.draw(s2);
+        window.draw(s1);
         window.display();
     }
     closesocket(client);
