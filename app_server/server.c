@@ -220,7 +220,6 @@ void * gameRoutine(void * dta) {
     sendto(game->server, in2, len, 0, (SOCKADDR *)&client2, size);
 
     printf("game started\n");
-    Player player;
 
     while (1) {
         recvfrom(game->server, in, 1025, 0, (SOCKADDR *)&client, &size);
@@ -232,13 +231,9 @@ void * gameRoutine(void * dta) {
         }
         if (client.sin_addr.S_un.S_addr == client1.sin_addr.S_un.S_addr) {
             memcpy(in1, in, sizeof(Player));
-            memcpy(&player, in, sizeof(Player));
-            printf("from 1: %.1f, %.1f\n", player.x, player.y);
             sendto(game->server, in2, sizeof(Player), 0, (SOCKADDR *) &client1, sizeof(client));
         } else {
             memcpy(in2, in, sizeof(Player));
-            memcpy(&player, in, sizeof(Player));
-            printf("from 2: %.1f, %.1f\n", player.x, player.y);
             sendto(game->server, in1, sizeof(Player), 0, (SOCKADDR *) &client2, sizeof(client));
         }
     }
