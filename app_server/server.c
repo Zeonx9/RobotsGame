@@ -200,17 +200,24 @@ void * gameRoutine(void * dta) {
     // настроить udp-сервер
     game->server = createUdpServer();
     if (game->server == INVALID_SOCKET){
-        printf("failed to create udp server");
+        printf("failed to create udp server(%d)\n", WSAGetLastError());
         return (void *) -1;
     }
+    printf("socket bound to port\n");
+
     // получить сигналы о готовности от клиентов, и сохранить иг адреса для ответов
     char in1[1025] = "", in2[1025] = "", in[1025] = "";
     SOCKADDR_IN client1, client2, client;
     int size = sizeof(client1);
-    recvfrom(game->server, in1, 1025, 0, (SOCKADDR *)&client1, &size);
-    printf("first client of game session %s:%d\n", inet_ntoa(client1.sin_addr), client1.sin_port);
+
+    int len;
+    len = recvfrom(game->server, in1, 1025, 0, (SOCKADDR *)&client1, &size);
     recvfrom(game->server, in2, 1025, 0, (SOCKADDR *)&client2, &size);
-    printf("first client of game session %s:%d\n", inet_ntoa(client2.sin_addr), client2.sin_port);
+    printf("first client of game session %s:%d\n", inet_ntoa(client1.sin_addr), client1.sin_port);
+    printf("second client of game session %s:%d\n", inet_ntoa(client2.sin_addr), client2.sin_port);
+
+    sendto(game->server, in1, len, 0, (SOCKADDR *)&client1, size);
+    sendto(game->server, in2, len, 0, (SOCKADDR *)&client2, size);
 
     printf("game started\n");
     Player player;
@@ -218,6 +225,7 @@ void * gameRoutine(void * dta) {
     while (1) {
         recvfrom(game->server, in, 1025, 0, (SOCKADDR *)&client, &size);
         if (strcmp(in, "NO") == 0) { // кто-то отключился
+            printf("disconnect\n");
             sendto(game->server, in, sizeof(Player), 0, (SOCKADDR *) &client2, sizeof(client2));
             sendto(game->server, in, sizeof(Player), 0, (SOCKADDR *) &client1, sizeof(client));
             break;

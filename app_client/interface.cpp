@@ -181,7 +181,7 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
     SOCKET client;
 
     // создать сокет для клиента и проверить на удачное создание
-    client = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
+    client = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (client == INVALID_SOCKET){
         printf("!! ERROR CANNOT CREATE SOCKET\n");
     }
@@ -189,7 +189,7 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
     // описание сервера для подключения
     SOCKADDR_IN server; int size = sizeof(server);
     server.sin_family = AF_INET;
-    server.sin_port = htons(2205); // такой же порт как на сервере
+    server.sin_port = htons(2206); // такой же порт как на сервере
     server.sin_addr.S_un.S_addr = inet_addr(IP); // Zeon's IP адрес
 
     sf::Texture bgTexture, playerTexture;
@@ -211,7 +211,10 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
 
     // отправить первый сигнал
     char no[3] = "NO";
-    sendto(client, (const char *) &player1, sizeof(Player), 0, (SOCKADDR *) &server, sizeof(server));
+    int len = sendto(client, (const char *) &player1, sizeof(Player), 0, (SOCKADDR *) &server, sizeof(server));
+    printf("server: %s:%d\nfirst msg was sent! len=%d(%d)\n", inet_ntoa(server.sin_addr), ntohs(server.sin_port), len, WSAGetLastError());
+    len = recvfrom(client, (char *) &player2, sizeof(Player), 0, (SOCKADDR *) &server, &size);
+    printf("respond got(%d)", len);
 
     while(window.isOpen() && shs->act == play) {
         while (window.pollEvent(ev)) {
@@ -239,6 +242,7 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
 
         // отправить информацию о себе
         sendto(client, (const char *) &player1, sizeof(Player), 0, (SOCKADDR *) &server, sizeof(server));
+        //printf("another data(%d) sent(%d)\n", len, WSAGetLastError());
         animatePlayer(&player1, (float) clock1.restart().asMicroseconds(), s1, &animation1);
 
         // получить информацию о сопернике
