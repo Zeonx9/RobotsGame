@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <winsock2.h>
 #include <pthread.h>
-#include "../app_client/game.h"
 
 // = структуры =
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -26,19 +25,15 @@ typedef struct list_clients_ {
 } ClientsList;
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-typedef enum joinStates {
-    justCreated, justJoined, waiting, completed
-} JoinStates;
 
 typedef struct game {
-    int firstId;
-    SOCKET client1, client2;
+    int id1, id2;
+    SOCKET client1, client2, server;
 } Game;
 
 typedef struct games_manager {
     int hasActiveGame;
     Game *game;
-    int notifyFirst;
 } GamesManager;
 
 // содержит указатели на объекты связи между потоками клиентов и сервером
@@ -75,5 +70,8 @@ void * clientAcceptorRoutine(void * servSock);
 
 // точка входа в поток создающийся для каждого нового клиента
 void * clientRoutine(void * dta);
+
+// точка входа в поток новой игровой сессии
+void * gameRoutine(void * dta)
 
 #endif //ROBOTSGAME_SERVER_H

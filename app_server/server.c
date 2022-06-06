@@ -1,5 +1,7 @@
 #include "server.h"
 #include "requests.h"
+#include "../app_client/game.h"
+
 
 void addClient(ClientsList * list, SOCKET s, SOCKADDR_IN a, pthread_t t) {
     ++list->count;
@@ -49,74 +51,6 @@ void deleteList(ClientsList * list) {
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void * GameRoutine(void * dta) {
-    Game * game = (Game *) dta;
-
-    printf("game started\n");
-    while (game->client2 == INVALID_SOCKET); // ожидание подключения второго клиента
-    char in1[1025], in2[1025], no[] = "NO";
-
-    while (1) {
-        // получить информацию от обоих игроков
-        int res1 = recv(game->client1, in1, 1025, 0);
-        if (!res1 || res1 == SOCKET_ERROR) { // организатор отключился
-            printf("!! player1 disconnected recv\n");
-            send(game->client2, no, 3, 0);
-            break;
-        }
-
-        int res2 = recv(game->client2, in2, 1025, 0);
-        if (!res2 || res2 == SOCKET_ERROR) {
-            printf("!! player2 disconnected recv\n");
-            send(game->client1, no, 3, 0);
-            break;
-        }
-
-        // отправить каждому игроку информацию о другом
-        if (send(game->client1, in2, sizeof(Player), 0) == SOCKET_ERROR) {
-            printf("!! player1 disconnected send\n");
-            send(game->client2, no, 3, 0);
-            break;
-        }
-        if (send(game->client2, in1, sizeof(Player), 0) == SOCKET_ERROR) {
-            printf("!! player2 disconnected send\n");
-            send(game->client1, no, 3, 0);
-            break;
-        }
-    }
-
-    printf("game ended\n");
-    free(game);
-}
-
-JoinStates handleJoinRequest(SharedData * shd, SOCKET self, int id) {
-    //printf("handling hasGame=%d, toNotify=%d, gamePtr=%p\n", shd->gManager.hasActiveGame, shd->gManager.notifyFirst, shd->gManager.game);
-    if (shd->gManager.hasActiveGame) {
-        if (shd->gManager.game->firstId == id) { // сравнение идет по ID
-            if (shd->gManager.notifyFirst) {
-                shd->gManager.hasActiveGame = 0;
-                shd->gManager.game = NULL;
-                return completed; // сказать, что 2ой игрок присоединился
-            }
-            return waiting; // повторный запрос
-        }
-        shd->gManager.game->client2 = self;
-        shd->gManager.notifyFirst = 1;
-        return justJoined; // игра уже была инициализирована, и клиент присоединился к существующей
-    }
-
-    shd->gManager.game = (Game *) malloc(sizeof(Game));
-    shd->gManager.game->client1 = self;
-    shd->gManager.game->firstId = id;
-    shd->gManager.game->client2 = INVALID_SOCKET;
-    shd->gManager.hasActiveGame = 1;
-    shd->gManager.notifyFirst = 0;
-
-    // создать поток в котором будет обрабатываться игра
-    pthread_create(&shd->newGameThread, NULL, GameRoutine, (void *) shd->gManager.game);
-    return justCreated; // игр не было, создается новая и ожидает второго игрока
-}
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 SOCKET createServer(SharedData *dta) {
     SOCKET server;
@@ -153,6 +87,30 @@ SOCKET createServer(SharedData *dta) {
     pthread_detach(clientAcceptor);
 
     printf(">> Server started\n");
+    return server;
+}
+
+SOCKET createUdpServer() {
+    SOCKET server;
+    SOCKADDR_IN serverAddr;
+
+    // создать сокет для сервера (tcp/ip)
+    server = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (server == INVALID_SOCKET) {
+        printf("!! СANNOT CREATE SERVER SOCKET\n");
+        return INVALID_SOCKET;
+    }
+
+    // настройка сокета сервера: указание домена, адреса и порта
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_port = htons(2206); // номер порта (22 год май месяц)
+    serverAddr.sin_addr.S_un.S_addr = htonl(INADDR_ANY); // любой адрес
+
+    // привязывание сокету сервера сформированного адреса и проверка на удачную привязку
+    if (bind(server, (SOCKADDR *) &serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
+        printf("!! CANNOT BIND SERVER ADDRESS\n");
+        return INVALID_SOCKET;
+    }
     return server;
 }
 
@@ -210,14 +168,8 @@ void * clientRoutine(void * dta) {
 
         // распечатать и обработать сообщение
         printf("@@ %llu: %s\n", client, msg);
-        int r = handleRequest(msg, respond);
-        if (r > JOIN_TO_GAME) { // обработать ситуацию подключения к игровой сессии
-            int id  = r - JOIN_TO_GAME;
-            JoinStates result = handleJoinRequest(shd, client, id);
-            sprintf(respond, result == justCreated || result == waiting ? "W" : "C");
-        }
-        else if (r)
-            printf("error occurred: %d\n", r);
+        shd->sock = client;
+        int r = handleRequest(msg, respond, shd);
 
         // послать обратно
         if (send(client, respond, (int) strlen(respond) + 1, 0) == SOCKET_ERROR) {
@@ -225,9 +177,14 @@ void * clientRoutine(void * dta) {
             break;
         }
 
-        // если был успешно начат новый игровой поток, то данный поток ожидает его завершения
-        if (respond[0] == 'C')
+        // создать новый игровой поток, если нужно и ожидать его конца
+        if (r == JOIN_TO_GAME) {
+            pthread_t thread;
+            pthread_create(&thread, NULL, gameRoutine, (void *)shd->gManager.game);
             pthread_join(shd->newGameThread, NULL);
+        }
+        else if (r)
+            printf("error occurred: %d\n", r);
     }
 
     // клиент отключился, удаляем из списка
@@ -236,3 +193,43 @@ void * clientRoutine(void * dta) {
     free(node);
     pthread_mutex_unlock(&(shd->mutex));
 }
+
+void * gameRoutine(void * dta) {
+    Game * game = (Game *) dta;
+    printf("game thread started\n");
+    // настроить udp-сервер
+    game->server = createUdpServer();
+    if (game->server == INVALID_SOCKET){
+        printf("failed to create udp server");
+        return (void *) -1;
+    }
+    // получить сигналы о готовности от клиентов, и сохранить иг адреса для ответов
+    char in1[1025] = "", in2[1025] = "", in[1025] = "";
+    SOCKADDR_IN client1, client2, client;
+    int size = sizeof(client1);
+    recvfrom(game->server, in1, 1025, 0, (SOCKADDR *)&client1, &size);
+    recvfrom(game->server, in2, 1025, 0, (SOCKADDR *)&client2, &size);
+
+    printf("game started\n");
+
+    while (1) {
+        recvfrom(game->server, in, 1025, 0, (SOCKADDR *)&client, &size);
+        if (strcmp(in, "NO") == 0) { // кто-то отключился
+            sendto(game->server, in, sizeof(Player), 0, (SOCKADDR *) &client2, sizeof(client2));
+            sendto(game->server, in, sizeof(Player), 0, (SOCKADDR *) &client1, sizeof(client));
+            break;
+        }
+        if (client.sin_addr.S_un.S_addr == client1.sin_addr.S_un.S_addr) {
+            memcpy(in1, in, sizeof(Player));
+            sendto(game->server, in2, sizeof(Player), 0, (SOCKADDR *) &client2, sizeof(client2));
+        } else {
+            memcpy(in2, in, sizeof(Player));
+            sendto(game->server, in1, sizeof(Player), 0, (SOCKADDR *) &client1, sizeof(client));
+        }
+    }
+    closesocket(game->server);
+
+    printf("game ended\n");
+    free(game);
+}
+
