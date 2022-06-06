@@ -72,6 +72,6 @@ void * clientAcceptorRoutine(void * servSock);
 void * clientRoutine(void * dta);
 
 // точка входа в поток новой игровой сессии
-void * gameRoutine(void * dta)
+void * gameRoutine(void * dta);
 
 #endif //ROBOTSGAME_SERVER_H

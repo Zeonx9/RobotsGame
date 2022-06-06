@@ -12,7 +12,7 @@ int main() {
     ClientsList list = {}; // список создан статически !
     struct shared_data * shd = malloc(sizeof(struct shared_data));
     shd->list = &list;
-    shd->shutdown = shd->gManager.hasActiveGame = shd->gManager.notifyFirst = 0;
+    shd->shutdown = shd->gManager.hasActiveGame = 0;
     pthread_mutex_init(&(shd->mutex), NULL); // создать мьютекс для контроля общих данных
 
     // запуск сервера
