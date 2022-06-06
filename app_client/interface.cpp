@@ -167,7 +167,7 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
     sf::Texture bgTexture, playerTexture;
     sf::Sprite bgSprite, s1, s2;
     sf::Event ev{};
-    sf::Clock clock, timer;
+    sf::Clock clock1, clock2;
 
     bgTexture.loadFromFile("../app_client/src/background.png");
     playerTexture.loadFromFile("../app_client/src/robotgamesprites.png");
@@ -190,6 +190,16 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
             }
         }
 
+        // получить информацию о сопернике
+        int res = recv(shs->sock, (char *)&player2, sizeof(Player), 0);
+        if (!res || res == SOCKET_ERROR || strcmp((char *)&player2, "NO") == 0) {
+            printf("CANNOT RECEIVE OR CLIENT DISCONNECTED\n");
+            pthread_mutex_lock(&(shs->mutex));
+            if (shs->act > 0) shs->act = mainMenu;
+            pthread_mutex_unlock(&(shs->mutex));
+        }
+        animatePlayer(&player2, (float) clock2.restart().asMicroseconds(), s2, &animation2);
+
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Q)) {
             pthread_mutex_lock(&(shs->mutex));
             shs->act = closeApp;
@@ -210,19 +220,7 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
             if (shs->act > 0) shs->act = mainMenu;
             pthread_mutex_unlock(&(shs->mutex));
         }
-
-        // получить информацию о сопернике
-        int res = recv(shs->sock, (char *)&player2, sizeof(Player), 0);
-        if (!res || res == SOCKET_ERROR || strcmp((char *)&player2, "NO") == 0) {
-            printf("CANNOT RECEIVE OR CLIENT DISCONNECTED\n");
-            pthread_mutex_lock(&(shs->mutex));
-            if (shs->act > 0) shs->act = mainMenu;
-            pthread_mutex_unlock(&(shs->mutex));
-        }
-
-        float time = (float) clock.restart().asMicroseconds();
-        animatePlayer(&player1, time, s1, &animation1);
-        animatePlayer(&player2, time, s2, &animation2);
+        animatePlayer(&player1, (float) clock1.restart().asMicroseconds(), s1, &animation1);
 
         window.clear();
         window.draw(bgSprite);
