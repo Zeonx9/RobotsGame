@@ -220,6 +220,7 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
         while (window.pollEvent(ev)) {
             if (ev.type == sf::Event::Closed) {
                 sendto(client, no, 3, 0, (SOCKADDR *) &server, sizeof(server));
+                printf("no sent\n");
                 pthread_mutex_lock(&(shs->mutex));
                 shs->act = closeApp;
                 pthread_mutex_unlock(&(shs->mutex));
@@ -247,6 +248,12 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
 
         // получить информацию о сопернике
         recvfrom(client, (char *) &player2, sizeof(player2), 0, (SOCKADDR *) &server, &size);
+        if (strcmp((char *)&player2, "NO") == 0) {
+            printf("disconnected\n");
+            pthread_mutex_lock(&(shs->mutex));
+            if (shs->act > 0) shs->act = mainMenu;
+            pthread_mutex_unlock(&(shs->mutex));
+        }
         animatePlayer(&player2, (float) clock2.restart().asMicroseconds(), s2, &animation2);
 
         window.clear();
