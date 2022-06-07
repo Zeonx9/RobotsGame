@@ -176,26 +176,14 @@ void animatePlayer(Player * p, float t, sf::Sprite &s, float *frame) {
 
 // начало самой игры
 void beginGame(sf::RenderWindow &window, SharedState * shs){
-
-    // TODO создание udp сокета и подключение его к серверу
-    SOCKET client;
-
-    // создать сокет для клиента и проверить на удачное создание
-    client = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    if (client == INVALID_SOCKET){
-        printf("!! ERROR CANNOT CREATE SOCKET\n");
-    }
-
-    // описание сервера для подключения
-    SOCKADDR_IN server; int size = sizeof(server);
-    server.sin_family = AF_INET;
-    server.sin_port = htons(2206); // такой же порт как на сервере
-    server.sin_addr.S_un.S_addr = inet_addr(IP); // Zeon's IP адрес
-
     sf::Texture bgTexture, playerTexture;
     sf::Sprite bgSprite, s1, s2;
     sf::Event ev{};
     sf::Clock clock1, clock2;
+    Player player1, player2;
+    float animation1, animation2;
+    initPlayer(&player1);
+    initPlayer(&player2);
 
     bgTexture.loadFromFile("../app_client/src/background.png");
     playerTexture.loadFromFile("../app_client/src/robotgamesprites.png");
@@ -204,21 +192,39 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
     s2.setTexture(playerTexture);
     s2.setColor(sf::Color(255, 180, 180));
 
-    Player player1, player2;
-    float animation1, animation2;
-    initPlayer(&player1);
-    initPlayer(&player2);
+    // создать сокет для клиента и проверить на удачное создание при ошибках закрывать приложение
+    SOCKET client;
+    client = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (client == INVALID_SOCKET){
+        printf("!! ERROR CANNOT CREATE SOCKET\n");
+        pthread_mutex_lock(&(shs->mutex));
+        shs->act = closeApp;
+        pthread_mutex_unlock(&(shs->mutex));
+    }
+    char portBuf[5] = {};
+    // получить порт для подключения
+    int r = recv(shs->sock, portBuf, 5, 0);
+    if (!r || r == SOCKET_ERROR) {
+        printf("error in receiving port\n");
+        pthread_mutex_lock(&(shs->mutex));
+        shs->act = closeApp;
+        pthread_mutex_unlock(&(shs->mutex));
+    }
+    u_short port = atoi(portBuf); // извлечь число из строки
 
-    // отправить первый сигнал
-    char no[3] = "NO";
-    sendto(client, (const char *) &player1, sizeof(Player), 0, (SOCKADDR *) &server, sizeof(server));
-    recvfrom(client, (char *) &player2, sizeof(Player), 0, (SOCKADDR *) &server, &size);
-    printf("sockets tested\n");
+    // описание сервера для подключения
+    SOCKADDR_IN saddr; int size = sizeof(saddr);
+    saddr.sin_family = AF_INET;
+    saddr.sin_port = htons(port); // такой же порт как на сервере
+    saddr.sin_addr.S_un.S_addr = inet_addr(IP); // Zeon's IP адрес
+    printf("udp socket has been configured (port = %d)\n", port);
+
+    char buffer[101], no[] = "NO";
 
     while(window.isOpen() && shs->act == play) {
         while (window.pollEvent(ev)) {
             if (ev.type == sf::Event::Closed) {
-                sendto(client, no, 3, 0, (SOCKADDR *) &server, sizeof(server));
+                sendto(client, no, 3, 0, (SOCKADDR *) &saddr, sizeof(saddr));
                 printf("no sent\n");
                 pthread_mutex_lock(&(shs->mutex));
                 shs->act = closeApp;
@@ -227,7 +233,7 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
         }
 
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Q)) {
-            sendto(client, no, 3, 0, (SOCKADDR *) &server, sizeof(server));
+            sendto(client, no, 3, 0, (SOCKADDR *) &saddr, sizeof(saddr));
             printf("no sent\n");
             pthread_mutex_lock(&(shs->mutex));
             shs->act = closeApp;
@@ -241,21 +247,25 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up))
             leap(&player1);
 
-        // отправить информацию о себе
-        sendto(client, (const char *) &player1, sizeof(Player), 0, (SOCKADDR *) &server, sizeof(server));
+       // отправить информацию о себе, затем анимировать персонажа
+        sendto(client, (const char *) &player1, sizeof(Player), 0, (SOCKADDR *) &saddr, sizeof(saddr));
         animatePlayer(&player1, (float) clock1.restart().asMicroseconds(), s1, &animation1);
-        printf("sent\n");
-
-        // получить информацию о сопернике
-        recvfrom(client, (char *)&player2, sizeof(Player), 0, (SOCKADDR *) &server, &size);
-        if (strcmp((char *)&player2, "NO") == 0) {
-            printf("disconnected\n");
+//
+        // получить информацию о сопернике (в буфер)
+        int len = recvfrom(client, buffer, 100, 0, (SOCKADDR *) &saddr, &size);
+        if (strcmp(buffer, "NO") == 0) {
+            printf("received signal of disconnection\n");
             pthread_mutex_lock(&(shs->mutex));
-            if (shs->act > 0) shs->act = mainMenu;
+            if (shs->act > 0)
+                shs->act = mainMenu;
             pthread_mutex_unlock(&(shs->mutex));
         }
+        // если нет ошибок передачи сохраняем данные в объекте клиента
+        if (len == sizeof(player2))
+            memcpy(&player2, buffer, len);
+        else
+            printf("error occurred in receiving data (%d)\n", len);
         animatePlayer(&player2, (float) clock2.restart().asMicroseconds(), s2, &animation2);
-        printf("received\n");
 
         window.clear();
         window.draw(bgSprite);
