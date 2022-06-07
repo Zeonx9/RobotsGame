@@ -284,7 +284,7 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
         window.draw(s1);
         window.display();
 
-        if (err > 20) {
+        if (err > 80) {
             pthread_mutex_lock(&(shs->mutex));
             if (shs->act > 0)
                 shs->act = mainMenu;

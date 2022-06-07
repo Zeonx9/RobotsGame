@@ -228,12 +228,12 @@ void * gameRoutine(void * dta) {
         int len1, len2;
         len1 = recvfrom(s1, buffer1, 100, 0, (SOCKADDR *) &addr1, &size);
         len2 = recvfrom(s2, buffer2, 100, 0, (SOCKADDR *) &addr2, &size);
-        if (strcmp(buffer1, "NO") == 0 || err1 > 10) { // первый отключился
+        if (strcmp(buffer1, "NO") == 0 || err1 > 30) { // первый отключился
             printf("client1 has sent no\n");
             sendto(s2, buffer1, 3, 0, (SOCKADDR *) &addr2, sizeof(addr2));
             break;
         }
-        if (strcmp(buffer2, "NO") == 0 || err2 > 10) { // второй отключился
+        if (strcmp(buffer2, "NO") == 0 || err2 > 30) { // второй отключился
             printf("client2 has sent no\n");
             sendto(s1, buffer2, 3, 0, (SOCKADDR *) &addr1, sizeof(addr1));
             break;
