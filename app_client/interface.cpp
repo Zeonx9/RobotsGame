@@ -257,7 +257,7 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
        // отправить информацию о себе, затем анимировать персонажа
         sendto(client, (const char *) &player1, sizeof(Player), 0, (SOCKADDR *) &saddr, sizeof(saddr));
         animatePlayer(&player1, (float) clock1.restart().asMicroseconds(), s1, &animation1);
-//
+
         // получить информацию о сопернике (в буфер)
         int len = recvfrom(client, buffer, 100, 0, (SOCKADDR *) &saddr, &size);
         if (strcmp(buffer, "NO") == 0) {

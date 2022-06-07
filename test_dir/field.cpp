@@ -1,7 +1,7 @@
 #include "field.h"
 void ifKeyPressed(int *x, int *y, unsigned int symbol){
-    if (symbol == 72) {*x += 60;}
-    else if (symbol == 74) {*y += 60;}
+    if (symbol == 72) {if (*x <= 1860) *x += 60;}
+    else if (symbol == 74) {if (*y <= 1020) *y += 60;}
     else if (symbol == 71) { if (*x != 0) *x -= 60;}
     else if (symbol == 73) { if (*y != 0) *y -= 60;}
 }
@@ -13,7 +13,7 @@ void createField(sf::RenderWindow &window) {
     GAMEFIELD game;
 
     game.borderX = game.borderY = 0;
-    bgTexture.loadFromFile("../app_client/src/background.png");
+    bgTexture.loadFromFile("../app_client/src/background_2.png");
     bgSprite.setTexture(bgTexture);
     blockTexture.loadFromFile("../app_client/src/groupBlocks.png");
     blockSprite.setTexture(blockTexture);
