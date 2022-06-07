@@ -191,13 +191,13 @@ void * gameRoutine(void * dta) {
     serverAddr.sin_port = htons(2206 + game->n);
     serverAddr.sin_addr.S_un.S_addr = htonl(INADDR_ANY);
     if (bind(s1, (SOCKADDR *) &serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
-        printf("failed to bound udp server, port 2206 (%d)\n", WSAGetLastError());
+        printf("failed to bound udp server, port %d (%d)\n", serverAddr.sin_port, WSAGetLastError());
         closesocket(s1), closesocket(s2);
         return (void *) -2;
     }
     serverAddr.sin_port = htons(2207 + game->n);
     if (bind(s2, (SOCKADDR *) &serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
-        printf("failed to bound udp server, port 2207 (%d)\n", WSAGetLastError());
+        printf("failed to bound udp server, port %d (%d)\n", serverAddr.sin_port, WSAGetLastError());
         return (void *) -2;
     }
     printf("sockets bound to ports\n");
@@ -221,26 +221,32 @@ void * gameRoutine(void * dta) {
     Player p1, p2;
     SOCKADDR_IN addr1, addr2; int size = sizeof(addr1);
 
+    int err1 = 0, err2 = 0;
     printf("game started\n");
     while (1) {
         // получить информацию от обоих клиентов
         int len1, len2;
         len1 = recvfrom(s1, buffer1, 100, 0, (SOCKADDR *) &addr1, &size);
         len2 = recvfrom(s2, buffer2, 100, 0, (SOCKADDR *) &addr2, &size);
-        if (strcmp((char *) &p1, "NO") == 0) { // первый отключился
-            sendto(s2, (const char *) &p1, 3, 0, (SOCKADDR *) &addr2, sizeof(addr2));
+        if (strcmp(buffer1, "NO") == 0 || err1 > 10) { // первый отключился
+            printf("client1 has sent no\n");
+            sendto(s2, buffer1, 3, 0, (SOCKADDR *) &addr2, sizeof(addr2));
             break;
         }
-        if (strcmp((char *) &p2, "NO") == 0) { // второй отключился
-            sendto(s1, (const char *) &p2, 3, 0, (SOCKADDR *) &addr1, sizeof(addr1));
+        if (strcmp(buffer2, "NO") == 0 || err2 > 10) { // второй отключился
+            printf("client2 has sent no\n");
+            sendto(s1, buffer2, 3, 0, (SOCKADDR *) &addr1, sizeof(addr1));
             break;
         }
+        err1 += len1 < 0;
+        err2 += len2 < 0;
         if (len1 != sizeof(p1) || len2 != sizeof(p2)) // произошла ошибка!
             printf("error occurred while receiving (%d, %d)\n", len1, len2);
         else {
             // ошибок не было можно сохранить полученные данные в объекты игроков
             memcpy(&p1, buffer1, len1);
             memcpy(&p2, buffer2, len2);
+            err1 = err2 = 0;
         }
 
         // отправить ответ каждому

@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <winsock2.h>
 
-#define IP "192.168.122.105"
+#define IP "192.168.111.105"
 
 // функция создает сокет и соединяет его с сервером
 SOCKET connectToServer();

@@ -220,6 +220,10 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
     printf("udp socket has been configured (port = %d)\n", port);
 
     char buffer[101], no[] = "NO";
+    int err = 0;
+
+    u_long mode = 1;  // сделать сокет не блокирующим
+    ioctlsocket(client, FIONBIO, &mode);
 
     while(window.isOpen() && shs->act == play) {
         while (window.pollEvent(ev)) {
@@ -229,15 +233,18 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
                 pthread_mutex_lock(&(shs->mutex));
                 shs->act = closeApp;
                 pthread_mutex_unlock(&(shs->mutex));
+                printf("exit\n");
             }
         }
 
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Q)) {
             sendto(client, no, 3, 0, (SOCKADDR *) &saddr, sizeof(saddr));
-            printf("no sent\n");
+            printf("Q no sent\n");
             pthread_mutex_lock(&(shs->mutex));
             shs->act = closeApp;
             pthread_mutex_unlock(&(shs->mutex));
+            printf("exit\n");
+            break;
         }
 
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right))
@@ -259,12 +266,16 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
             if (shs->act > 0)
                 shs->act = mainMenu;
             pthread_mutex_unlock(&(shs->mutex));
+            printf("to main Menu\n");
         }
         // если нет ошибок передачи сохраняем данные в объекте клиента
-        if (len == sizeof(player2))
+        if (len == sizeof(player2)) {
             memcpy(&player2, buffer, len);
-        else
+            err = 0;
+        } else {
             printf("error occurred in receiving data (%d)\n", len);
+            err++;
+        }
         animatePlayer(&player2, (float) clock2.restart().asMicroseconds(), s2, &animation2);
 
         window.clear();
@@ -272,7 +283,15 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
         window.draw(s2);
         window.draw(s1);
         window.display();
+
+        if (err > 20) {
+            pthread_mutex_lock(&(shs->mutex));
+            if (shs->act > 0)
+                shs->act = mainMenu;
+            pthread_mutex_unlock(&(shs->mutex));
+        }
     }
+    printf("exiting playing room\n");
     closesocket(client);
 }
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -313,6 +332,7 @@ void createLobby(sf::RenderWindow &window, SharedState * shs) {
     pthread_mutex_lock(&(shs->mutex));
     shs->act = getRating;
     pthread_mutex_unlock(&(shs->mutex));
+    printf("get rating %d\n", shs->act);
     while (shs->act == getRating); // ожидание ответа от сервера
     if (!shs->connected)
         rating.setString("Cannot get current rating!\n");
