@@ -259,7 +259,7 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up)) {
             leap(&player1);
         }
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space) && clock3.getElapsedTime().asMilliseconds() > 200){
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space) && clock3.getElapsedTime().asMilliseconds() > 600){
             initBullet(&player1, bullets);
             clock3.restart();
         }
@@ -297,12 +297,12 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
 
         for (auto & bullet : bullets) {
             if (bullet.dir != 0){
-//                printf("%lf\n", bullet.x);
-                bulletS.setPosition(bullet.x, bullet.y);
+
+                bulletS.setPosition(bullet.x, bullet.y + 40);
                 window.draw(bulletS);
                 bullet.x += bullet.dir * 1000 * 2 * 0.02f;
-                if (((bullet.x > player2.x && bullet.x < player2.x + WIDTH) && (bullet.y > player2.y && bullet.y
-                        < player2.y + HEIGHT)) || ( bullet.x > 1920 || bullet.x < 0)){
+                if (((bullet.x >= player2.x && bullet.x <= player2.x + WIDTH) && (bullet.y >= player2.y && bullet.y
+                        <= player2.y + HEIGHT)) || ( bullet.x > 1920 || bullet.x < 0)){
                     bullet.dir = 0;
                 }
             }
