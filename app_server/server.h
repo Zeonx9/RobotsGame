@@ -27,13 +27,14 @@ typedef struct list_clients_ {
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 typedef struct game {
-    int id1, id2;
+    int id1, id2, n;
     SOCKET client1, client2, server;
 } Game;
 
 typedef struct games_manager {
     int hasActiveGame;
     Game *game;
+    int count;
 } GamesManager;
 
 // содержит указатели на объекты связи между потоками клиентов и сервером

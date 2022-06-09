@@ -90,30 +90,6 @@ SOCKET createServer(SharedData *dta) {
     return server;
 }
 
-SOCKET createUdpServer() {
-    SOCKET server;
-    SOCKADDR_IN serverAddr;
-
-    // создать сокет для сервера (tcp/ip)
-    server = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    if (server == INVALID_SOCKET) {
-        printf("!! СANNOT CREATE SERVER SOCKET\n");
-        return INVALID_SOCKET;
-    }
-
-    // настройка сокета сервера: указание домена, адреса и порта
-    serverAddr.sin_family = AF_INET;
-    serverAddr.sin_port = htons(2206); // номер порта (22 год май месяц)
-    serverAddr.sin_addr.S_un.S_addr = htonl(INADDR_ANY); // любой адрес
-
-    // привязывание сокету сервера сформированного адреса и проверка на удачную привязку
-    if (bind(server, (SOCKADDR *) &serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
-        printf("!! CANNOT BIND SERVER ADDRESS\n");
-        return INVALID_SOCKET;
-    }
-    return server;
-}
-
 void * clientAcceptorRoutine(void * dta) {
     // распаковать данные, объявить переменные
     SharedData * shd = (SharedData *) dta;
@@ -173,13 +149,15 @@ void * clientRoutine(void * dta) {
 
         // послать обратно
         if (send(client, respond, (int) strlen(respond) + 1, 0) == SOCKET_ERROR) {
-            printf("!! CANNOT SEND MESSAGE BACK");
+            printf("!! CANNOT SEND MESSAGE BACK\n");
             break;
         }
 
         // создать новый игровой поток, если нужно и ожидать его конца
         if (r == JOIN_TO_GAME) {
             pthread_t thread;
+            shd->gManager.game->n = shd->gManager.count;
+            shd->gManager.count += 2;
             pthread_create(&thread, NULL, gameRoutine, (void *)shd->gManager.game);
             pthread_join(shd->newGameThread, NULL);
         }
@@ -197,48 +175,88 @@ void * clientRoutine(void * dta) {
 void * gameRoutine(void * dta) {
     Game * game = (Game *) dta;
     printf("game thread started\n");
+
     // настроить udp-сервер
-    game->server = createUdpServer();
-    if (game->server == INVALID_SOCKET){
+    SOCKET s1, s2;
+    s1 = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    s2 = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (s1 == SOCKET_ERROR || s2 == SOCKET_ERROR) {
         printf("failed to create udp server(%d)\n", WSAGetLastError());
         return (void *) -1;
     }
-    printf("socket bound to port\n");
 
-    // получить сигналы о готовности от клиентов, и сохранить иг адреса для ответов
-    char in1[1025] = "", in2[1025] = "", in[1025] = "";
-    SOCKADDR_IN client1, client2, client;
-    int size = sizeof(client1);
+    // привязать порты к созданным сокетам
+    SOCKADDR_IN serverAddr;
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_port = htons(2206 + game->n);
+    serverAddr.sin_addr.S_un.S_addr = htonl(INADDR_ANY);
+    if (bind(s1, (SOCKADDR *) &serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
+        printf("failed to bound udp server, port %d (%d)\n", serverAddr.sin_port, WSAGetLastError());
+        closesocket(s1), closesocket(s2);
+        return (void *) -2;
+    }
+    serverAddr.sin_port = htons(2207 + game->n);
+    if (bind(s2, (SOCKADDR *) &serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
+        printf("failed to bound udp server, port %d (%d)\n", serverAddr.sin_port, WSAGetLastError());
+        return (void *) -2;
+    }
+    printf("sockets bound to ports\n");
 
-    int len;
-    len = recvfrom(game->server, in1, 1025, 0, (SOCKADDR *)&client1, &size);
-    recvfrom(game->server, in2, 1025, 0, (SOCKADDR *)&client2, &size);
-    printf("first client of game session %s:%d\n", inet_ntoa(client1.sin_addr), client1.sin_port);
-    printf("second client of game session %s:%d\n", inet_ntoa(client2.sin_addr), client2.sin_port);
+    // отправить каждому клиенту порт, по которому он будет обмениваться информацией
+    char port[10] = {};
+    sprintf(port, "%d", 2206 + game->n);
+    if(send(game->client1, port, 10, 0) == SOCKET_ERROR) {
+        printf("failed to send port for first client\n");
+        return (void *) -3;
+    }
+    sprintf(port, "%d", 2207 + game->n);
+    if (send(game->client2, port, 10, 0) == SOCKET_ERROR){
+        printf("failed to send port for second client\n");
+        return (void *) -3;
+    }
+    printf ("all ports has been sent\n");
 
-    sendto(game->server, in1, len, 0, (SOCKADDR *)&client1, size);
-    sendto(game->server, in2, len, 0, (SOCKADDR *)&client2, size);
+    // буферы для приема информации
+    char buffer1[101] = {}, buffer2[101] = {};
+    Player p1, p2;
+    SOCKADDR_IN addr1, addr2; int size = sizeof(addr1);
 
+    int err1 = 0, err2 = 0;
     printf("game started\n");
-
     while (1) {
-        recvfrom(game->server, in, 1025, 0, (SOCKADDR *)&client, &size);
-        if (strcmp(in, "NO") == 0) { // кто-то отключился
-            printf("disconnect\n");
-            sendto(game->server, in, sizeof(Player), 0, (SOCKADDR *) &client2, sizeof(client2));
-            sendto(game->server, in, sizeof(Player), 0, (SOCKADDR *) &client1, sizeof(client));
+        // получить информацию от обоих клиентов
+        int len1, len2;
+        len1 = recvfrom(s1, buffer1, 100, 0, (SOCKADDR *) &addr1, &size);
+        len2 = recvfrom(s2, buffer2, 100, 0, (SOCKADDR *) &addr2, &size);
+        if (strcmp(buffer1, "NO") == 0 || err1 > 30) { // первый отключился
+            printf("client1 has sent no\n");
+            sendto(s2, buffer1, 3, 0, (SOCKADDR *) &addr2, sizeof(addr2));
             break;
         }
-        if (client.sin_addr.S_un.S_addr == client1.sin_addr.S_un.S_addr) {
-            memcpy(in1, in, sizeof(Player));
-            sendto(game->server, in2, sizeof(Player), 0, (SOCKADDR *) &client1, sizeof(client));
-        } else {
-            memcpy(in2, in, sizeof(Player));
-            sendto(game->server, in1, sizeof(Player), 0, (SOCKADDR *) &client2, sizeof(client));
+        if (strcmp(buffer2, "NO") == 0 || err2 > 30) { // второй отключился
+            printf("client2 has sent no\n");
+            sendto(s1, buffer2, 3, 0, (SOCKADDR *) &addr1, sizeof(addr1));
+            break;
         }
-    }
-    closesocket(game->server);
+        err1 += len1 < 0;
+        err2 += len2 < 0;
+        if (len1 != sizeof(p1) || len2 != sizeof(p2)) // произошла ошибка!
+            printf("error occurred while receiving (%d, %d)\n", len1, len2);
+        else {
+            // ошибок не было можно сохранить полученные данные в объекты игроков
+            memcpy(&p1, buffer1, len1);
+            memcpy(&p2, buffer2, len2);
+            err1 = err2 = 0;
+        }
 
+        // отправить ответ каждому
+        len1 = sendto(s1, (const char *) &p2, sizeof(p2), 0, (SOCKADDR *) &addr1, sizeof(addr1));
+        len2 = sendto(s2, (const char *) &p1, sizeof(p1), 0, (SOCKADDR *) &addr2, sizeof(addr2));
+        if (len1 != sizeof(p1) || len2 != sizeof(p2))
+            printf("error occurred while sending (%d, %d)\n", len1, len2);
+    }
+    closesocket(s1);
+    closesocket(s2);
     printf("game ended\n");
     free(game);
 }
