@@ -1,4 +1,4 @@
-#include <SFML/Graphics.hpp>
+                #include <SFML/Graphics.hpp>
 #include <SFML/Audio.hpp>
 extern "C" {
     #include "../app_client/game.h"
@@ -35,7 +35,7 @@ int startWindow() {
     texture.loadFromFile("../app_client/src/robotgamesprites.png");
     sprite1.setTexture(texture);
     sprite2.setTexture(texture);
-
+    CircleShape *bullets = (CircleShape*) calloc(10, sizeof(CircleShape));
     Player player1, player2;
     initPlayer(&player1);
     initPlayer(&player2);
@@ -66,6 +66,8 @@ int startWindow() {
         float time = (float) clock.restart().asMicroseconds();
         animatePlayer(&player1, time, sprite1);
         animatePlayer(&player2, time, sprite2);
+
+
 
         window.clear(Color(30, 30, 60));
         window.draw(sprite1);

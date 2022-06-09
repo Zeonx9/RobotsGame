@@ -176,10 +176,10 @@ void animatePlayer(Player * p, float t, sf::Sprite &s, float *frame) {
 
 // начало самой игры
 void beginGame(sf::RenderWindow &window, SharedState * shs){
-    sf::Texture bgTexture, playerTexture;
-    sf::Sprite bgSprite, s1, s2;
+    sf::Texture bgTexture, playerTexture, bulletTexture;
+    sf::Sprite bgSprite, s1, s2, bulletS;
     sf::Event ev{};
-    sf::Clock clock1, clock2;
+    sf::Clock clock1, clock2, clock3, clock4;
     Player player1, player2;
     float animation1, animation2;
     initPlayer(&player1);
@@ -187,10 +187,14 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
 
     bgTexture.loadFromFile("../app_client/src/background.png");
     playerTexture.loadFromFile("../app_client/src/robotgamesprites.png");
+    bulletTexture.loadFromFile("../app_client/src/bullet.png");
     bgSprite.setTexture(bgTexture);
+    bulletS.setTexture(bulletTexture);
     s1.setTexture(playerTexture);
     s2.setTexture(playerTexture);
     s2.setColor(sf::Color(255, 180, 180));
+
+    Bullet bullets[10] = {0};
 
     // создать сокет для клиента и проверить на удачное создание при ошибках закрывать приложение
     SOCKET client;
@@ -249,12 +253,19 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
 
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right))
             walk(&player1, Right);
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left)) {
             walk(&player1, Left);
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up))
+        }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up)) {
             leap(&player1);
+        }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space) && clock3.getElapsedTime().asMilliseconds() > 200){
+            initBullet(&player1, bullets);
+            clock3.restart();
+        }
 
-       // отправить информацию о себе, затем анимировать персонажа
+
+        // отправить информацию о себе, затем анимировать персонажа
         sendto(client, (const char *) &player1, sizeof(Player), 0, (SOCKADDR *) &saddr, sizeof(saddr));
         animatePlayer(&player1, (float) clock1.restart().asMicroseconds(), s1, &animation1);
 
@@ -263,8 +274,9 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
         if (strcmp(buffer, "NO") == 0) {
             printf("received signal of disconnection\n");
             pthread_mutex_lock(&(shs->mutex));
-            if (shs->act > 0)
+            if (shs->act > 0) {
                 shs->act = mainMenu;
+            }
             pthread_mutex_unlock(&(shs->mutex));
             printf("to main Menu\n");
         }
@@ -282,9 +294,25 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
         window.draw(bgSprite);
         window.draw(s2);
         window.draw(s1);
+
+        for (auto & bullet : bullets) {
+            if (bullet.dir != 0){
+//                printf("%lf\n", bullet.x);
+                bulletS.setPosition(bullet.x, bullet.y);
+                window.draw(bulletS);
+                bullet.x += bullet.dir * 1000 * 2 * 0.02f;
+                if (((bullet.x > player2.x && bullet.x < player2.x + WIDTH) && (bullet.y > player2.y && bullet.y
+                        < player2.y + HEIGHT)) || ( bullet.x > 1920 || bullet.x < 0)){
+                    bullet.dir = 0;
+                }
+            }
+        }
+
+
+
         window.display();
 
-        if (err > 80) {
+        if (err > 300) {
             pthread_mutex_lock(&(shs->mutex));
             if (shs->act > 0)
                 shs->act = mainMenu;

@@ -6,6 +6,18 @@ void initPlayer(Player *p) {
     p->onGround = p->jumped = 0;
 }
 
+void initBullet(Player *p, Bullet *bullets){
+//    p->wasShoot = 1;
+    for (int i = 0; i < 10; ++i) {
+        if (bullets[i].dir == 0){
+            bullets[i].dir = p->dir;
+            bullets[i].x = p->x;
+            bullets[i].y = p->y;
+            break;
+        }
+    }
+}
+
 void updatePlayer(Player *p, float t) {
     p->x += p->dx * t; // горизонтальное перемещение
 

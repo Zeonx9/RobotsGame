@@ -9,6 +9,10 @@ typedef enum directions {
     Left = -1, Right = 1
 } Directions;
 
+typedef struct bullet {
+    float dir, x, y;
+}Bullet;
+
 typedef struct player {
     float dx, dy, y, x, dir;
     int onGround, jumped;
@@ -17,6 +21,8 @@ typedef struct player {
 
 void initPlayer(Player *p);
 void updatePlayer(Player *p, float t);
+
+void initBullet(Player *p, Bullet *bullets);
 
 void walk(Player *p, Directions direction);
 void leap(Player *p);
