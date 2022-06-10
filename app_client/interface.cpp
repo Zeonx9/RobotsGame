@@ -220,7 +220,8 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
     if (!r || r == SOCKET_ERROR){
         printf("has not received the name of the opponent\n");
         shs->gameResult.opponentLogin[0] = 0;
-    }
+    } else
+        printf("got the name of enemy");
 
     char buffer[101], no[] = "NO";
     int err = 0;
@@ -405,6 +406,10 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
                 shs->gameResult.winner = 1;
             shs->gameResult.hits = 5 - player2.health;
             shs->gameResult.time = overall.getElapsedTime().asSeconds();
+
+            sendto(client, no, 3, 0, (SOCKADDR *) &saddr, sizeof(saddr));
+            printf("game is over, NO is sent");
+
             pthread_mutex_lock(&(shs->mutex));
             shs->act = gameOver;
             pthread_mutex_unlock(&(shs->mutex));

@@ -5,6 +5,7 @@
 #include "server.h"
 
 #define JOIN_TO_GAME 555 // возвращается, если поступил запрос на создание/подключение к игре
+#define JUST_WAIT 777
 
 // метод вызывает соответствующий обработчик запроса
 int handleRequest(char *in, char *out, SharedData *shd);

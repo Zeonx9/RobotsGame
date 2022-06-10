@@ -66,6 +66,7 @@ int reqJoinGame(char * in, char * out, SharedData *shd) {
     sscanf(in, "D %d", &id);
     if (!shd->gManager.hasActiveGame) {
         shd->gManager.game = (Game *) malloc(sizeof(Game));
+        shd->gManager.game->hasFinished = 0;
         shd->gManager.hasActiveGame = 1;
         shd->gManager.game->id1 = id;
         shd->gManager.game->client1 = sock;
@@ -86,7 +87,7 @@ int reqJoinGame(char * in, char * out, SharedData *shd) {
     sprintf(out, "C");
     shd->gManager.game->id2 = id;
     shd->gManager.game->client2 = sock;
-    return 0;
+    return JUST_WAIT;
 }
 
 int reqCancelGame(char * in, char * out, SharedData *shd) {

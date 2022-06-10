@@ -156,11 +156,19 @@ void * clientRoutine(void * dta) {
         // создать новый игровой поток, если нужно и ожидать его конца
         if (r == JOIN_TO_GAME) {
             pthread_t thread;
-            shd->gManager.game->n = shd->gManager.count;
+            Game * curGame = shd->gManager.game;
+            curGame->n = shd->gManager.count;
             shd->gManager.count += 2;
-            pthread_create(&thread, NULL, gameRoutine, (void *)shd->gManager.game);
-            pthread_join(shd->newGameThread, NULL);
+            pthread_create(&thread, NULL, gameRoutine, (void *)curGame);
+            pthread_detach(thread);
+            while(!curGame->hasFinished);
             printf("this should be only printed when the game is over\n");
+            free(curGame);
+        }
+        else if (r == JUST_WAIT) {
+            Game * curGame = shd->gManager.game;
+            while (!curGame->hasFinished);
+            printf("waited thread was resumed\n");
         }
         else if (r)
             printf("error occurred: %d\n", r);
@@ -226,8 +234,8 @@ void * gameRoutine(void * dta) {
     if (send(game->client1, log2, (int) strlen(log2) + 1, 0) == SOCKET_ERROR ||
         send(game->client2, log1, (int) strlen(log1) + 1, 0) == SOCKET_ERROR) {
         printf("failed to send logins back\n");
-    }
-    printf("logins were exchanged\n");
+    } else
+        printf("logins were exchanged\n");
 
     // буферы для приема информации
     char buffer1[101] = {}, buffer2[101] = {};
@@ -271,6 +279,5 @@ void * gameRoutine(void * dta) {
     closesocket(s1);
     closesocket(s2);
     printf("game ended\n");
-    free(game);
-
+    game->hasFinished = 1;
 }

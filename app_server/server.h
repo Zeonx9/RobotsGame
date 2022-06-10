@@ -29,6 +29,7 @@ typedef struct list_clients_ {
 typedef struct game {
     int id1, id2, n;
     SOCKET client1, client2, server;
+    int hasFinished;
 } Game;
 
 typedef struct games_manager {
