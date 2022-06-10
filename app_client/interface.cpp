@@ -261,7 +261,7 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
             }
         }
 
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Q)) {
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Q) || player1.health == 0) {
             sendto(client, no, 3, 0, (SOCKADDR *) &saddr, sizeof(saddr));
             printf("Q no sent\n");
             pthread_mutex_lock(&(shs->mutex));
@@ -340,6 +340,7 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
                 continue;
             }
             if (b->x > player1.x && b->x < player1.x + WIDTH && b->y > player1.y && b->y < player1.y + HEIGHT){
+                player1.health -= 20;
                 printf("first player got damaged\n");
                 b->dir = 0;
             }

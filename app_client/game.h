@@ -16,7 +16,7 @@ typedef struct bullet {
 
 typedef struct player {
     float dx, dy, y, x, dir;
-    int onGround, jumped, shoot;
+    int onGround, jumped, shoot, health;
 } Player;
 
 
