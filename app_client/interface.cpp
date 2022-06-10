@@ -16,7 +16,7 @@ void endGame(sf::RenderWindow &window, SharedState * shs);
 void windowDispatcher(SharedState * shs) {
     // массив указателей на функции для отрисовки соответствующих окон
     void (* windowFuncs[]) (sf::RenderWindow&, SharedState*) = {
-            createMenuApp, createRegWindow, createLobby, beginGame
+            createMenuApp, createRegWindow, createLobby, beginGame, endGame
     };
 
     // создать окно
@@ -183,70 +183,6 @@ void animatePlayer(Player * p, float t, sf::Sprite &s, float *frame, char **fiel
     p->dx = 0;
 }
 
-void endGame(sf::RenderWindow &window, SharedState * shs){
-    int drawConnectionState = -1;
-    sf::Texture bgTexture;
-    sf::Sprite bgSprite;
-    sf::Font font;
-    sf::Event ev{};
-    sf::Text
-            winner("egor", font, 40), //TODO добавить имя победителя
-            gameTime("2min 43sec", font, 40), //TODO посчитать и записать время игры
-            connected("", font, 40),
-            rating("122 13 4", font, 40); //TODO получить свой обновленный рейтинг
-    Button
-            back ("menu", font, 70, 0, 137, 57);
-
-    bgTexture.loadFromFile("../app_client/src/background_eg.png");
-    font.loadFromFile("../app_client/src/gameFont.otf");
-    bgSprite.setTexture(bgTexture);
-
-    winner.setPosition(855, 550);
-    winner.setFillColor(sf::Color(143, 200, 99));
-    gameTime.setPosition(777, 610);
-    gameTime.setFillColor(sf::Color(143, 200, 99));
-    connected.setPosition(1681, 970);
-    rating.setPosition(973, 670);
-    rating.setFillColor(sf::Color(143, 200, 99));
-    back.setPosition(45, 944);
-
-    while (window.isOpen()) {
-        while (window.pollEvent(ev)) {
-            if (ev.type == sf::Event::Closed) {
-                pthread_mutex_lock(&(shs->mutex));
-                shs->act = closeApp;
-                pthread_mutex_unlock(&(shs->mutex));
-            }
-            else if (ev.type == sf::Event::MouseMoved) {
-                back.mouseOnButton(ev.mouseMove.x, ev.mouseMove.y);
-            }
-            else if (ev.type == sf::Event::MouseButtonPressed) {
-                // кнопка назад
-                if (back.isClick(ev.mouseButton.x, ev.mouseButton.y)) {
-                    pthread_mutex_lock(&(shs->mutex));
-                    shs->act = mainMenu;
-                    pthread_mutex_unlock(&(shs->mutex));
-                }
-            }
-        }
-
-        if (drawConnectionState != shs->connected) {
-            drawConnectionState = shs->connected;
-            connected.setString(drawConnectionState ? "   connected" : "disconnected");
-            connected.setFillColor(drawConnectionState ? sf::Color(143, 200, 99) : sf::Color(176, 52, 37));
-        }
-
-        window.clear();
-        window.draw(bgSprite);
-        window.draw(winner);
-        window.draw(gameTime);
-        window.draw(rating);
-        window.draw(connected);
-        window.draw(back.draw());
-        window.display();
-    }
-}
-
 // начало самой игры
 void beginGame(sf::RenderWindow &window, SharedState * shs){
     // создать сокет для клиента и проверить на удачное создание при ошибках закрывать приложение
@@ -277,6 +213,15 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
     saddr.sin_addr.S_un.S_addr = inet_addr(IP); // Zeon's IP адрес
     printf("udp socket has been configured (port = %d)\n", port);
 
+    // обменяться логинами с соперником
+    if (send(shs->sock, shs->player->login, (int) strlen(shs->player->login) + 1, 0) == SOCKET_ERROR)
+        printf("my name was not sent to the opponent");
+    r = recv(shs->sock, shs->gameResult.opponentLogin, 21, 0);
+    if (!r || r == SOCKET_ERROR){
+        printf("has not received the name of the opponent\n");
+        shs->gameResult.opponentLogin[0] = 0;
+    }
+
     char buffer[101], no[] = "NO";
     int err = 0;
     u_long mode = 1;  // сделать сокет не блокирующим
@@ -284,8 +229,11 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
 
     sf::Texture bgTexture, playerTexture, bulletTexture, blockTexture;
     sf::Sprite bgSprite, s1, s2, bulletS, block, hp;
+    sf::Font font;
     sf::Event ev{};
+    sf::Text name("", font, 40);
 
+    font.loadFromFile("../app_client/src/gameFont.otf");
     bgTexture.loadFromFile("../app_client/src/background.png");
     playerTexture.loadFromFile("../app_client/src/robotgamesprites.png");
     bulletTexture.loadFromFile("../app_client/src/bullet.png");
@@ -298,6 +246,7 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
     s1.setTexture(playerTexture);
     s2.setTexture(playerTexture);
     s2.setColor(sf::Color(255, 180, 180));
+    name.setFillColor(sf::Color::White);
 
     // загрузка карты из файла
     char **field = (char **) malloc(H * sizeof(char *));
@@ -312,7 +261,7 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
     Bullet bullets[MAX_BULLETS] = {};
     float animation1, animation2, offsX, offsY;
     initPlayer(&player1); initPlayer(&player2);
-    sf::Clock clock1, clock2, clock3, clock4;
+    sf::Clock clock1, clock2, bulletTimer, clockBullets, overall;
 
     while(window.isOpen() && shs->act == play) {
         while (window.pollEvent(ev)) {
@@ -326,7 +275,7 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
             }
         }
 
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Q) || player1.health == 0) {
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Q)) {
             sendto(client, no, 3, 0, (SOCKADDR *) &saddr, sizeof(saddr));
             printf("Q no sent\n");
             pthread_mutex_lock(&(shs->mutex));
@@ -343,14 +292,15 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up))
             leap(&player1);
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space) &&
-            clock3.getElapsedTime().asMilliseconds() > 600) {
+            bulletTimer.getElapsedTime().asMilliseconds() > 600) {
             player1.shoot = 1;
-            clock3.restart();
+            bulletTimer.restart();
         }
 
         // отправить информацию о себе, затем анимировать персонажа
         sendto(client, (const char *) &player1, sizeof(Player), 0, (SOCKADDR *) &saddr, sizeof(saddr));
-        animatePlayer(&player1, (float) clock1.restart().asMicroseconds(), s1, &animation1, field, &offsX, &offsY, 1);
+        animatePlayer(&player1, (float) clock1.restart().asMicroseconds(),
+                      s1, &animation1, field, &offsX, &offsY, 1);
         initBullet(&player1, bullets);
 
         // получить информацию о сопернике (в буфер)
@@ -372,7 +322,8 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
             printf("error occurred in receiving data (%d)\n", len);
             err++;
         }
-        animatePlayer(&player2, (float) clock2.restart().asMicroseconds(), s2, &animation2, field, &offsX, &offsY, 0);
+        animatePlayer(&player2, (float) clock2.restart().asMicroseconds(),
+                      s2, &animation2, field, &offsX, &offsY, 0);
         initBullet(&player2, bullets);
 
         window.clear();
@@ -394,7 +345,7 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
         window.draw(s1);
 
         // отрисовать пули
-        float time = clock4.restart().asMicroseconds();
+        float time = clockBullets.restart().asMicroseconds();
         for (Bullet *b = bullets; b < bullets + MAX_BULLETS; ++b) {
             if (!b->dir)
                 continue;
@@ -419,19 +370,25 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
         }
 
         // отрисовать полоски жизней
-        for (int i = 0, x = 5, y = 5; i < 5; ++i, x += 40) {
+        for (int i = 0, x1 = 5, x2 = 1715, y = 5; i < 5; ++i, x1 += 40, x2 += 40) {
             if (i + 1 > player1.health)
                 bulletS.setColor(sf::Color(50, 50, 50));
-            bulletS.setPosition(x, y);
+            bulletS.setPosition(x1, y);
             window.draw(bulletS);
-        } bulletS.setColor(sf::Color::White);
-
-        for (int i = 0, x = 1715, y = 5; i < 5; ++i, x += 40) {
+            bulletS.setColor(sf::Color::White);
             if (i + 1 > player2.health)
                 bulletS.setColor(sf::Color(50, 50, 50));
-            bulletS.setPosition(x, y);
+            bulletS.setPosition(x2, y);
             window.draw(bulletS);
-        } bulletS.setColor(sf::Color::White);
+            bulletS.setColor(sf::Color::White);
+        }
+        // имена игроков
+        name.setString(shs->player->login);
+        name.setPosition(220, 5);
+        window.draw(name);
+        name.setString(shs->gameResult.opponentLogin);
+        name.setPosition(1615, 5);
+        window.draw(name);
 
         window.display();
 
@@ -439,6 +396,17 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
             pthread_mutex_lock(&(shs->mutex));
             if (shs->act > 0)
                 shs->act = mainMenu;
+            pthread_mutex_unlock(&(shs->mutex));
+        }
+
+        // проверка на окончание игры
+        if (player1.health < 1 || player2.health < 1) {
+            if (player1.health > 0)
+                shs->gameResult.winner = 1;
+            shs->gameResult.hits = 5 - player2.health;
+            shs->gameResult.time = overall.getElapsedTime().asSeconds();
+            pthread_mutex_lock(&(shs->mutex));
+            shs->act = gameOver;
             pthread_mutex_unlock(&(shs->mutex));
         }
     }
@@ -452,6 +420,66 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
     closesocket(client);
 }
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+void endGame(sf::RenderWindow &window, SharedState * shs){
+    int drawConnectionState = -1;
+    char timeStr[30], newRating[60];
+    sprintf(timeStr, "%dmin %dsec", (int)shs->gameResult.time / 60, (int)shs->gameResult.time % 60);
+    sprintf(newRating, "%d\t%d\t%d",
+            shs->player->highScore + shs->gameResult.hits,
+            shs->player->wins + shs->gameResult.winner, shs->player->gamesPlayed + 1);
+    sf::Texture bgTexture;
+    sf::Sprite bgSprite;
+    sf::Font font;
+    sf::Event ev{};
+    sf::Text
+            winner(shs->gameResult.winner ? shs->player->login : shs->gameResult.opponentLogin, font, 40),
+            gameTime(timeStr, font, 40),
+            rating(newRating, font, 40);
+    Button
+            back ("menu", font, 70, 0, 137, 57);
+
+    bgTexture.loadFromFile("../app_client/src/background_eg.png");
+    font.loadFromFile("../app_client/src/gameFont.otf");
+    bgSprite.setTexture(bgTexture);
+
+    winner.setPosition(855, 550);
+    winner.setFillColor(sf::Color(143, 200, 99));
+    gameTime.setPosition(777, 610);
+    gameTime.setFillColor(sf::Color(143, 200, 99));
+    rating.setPosition(973, 670);
+    rating.setFillColor(sf::Color(143, 200, 99));
+    back.setPosition(45, 944);
+
+    while (window.isOpen() && shs->act == gameOver) {
+        while (window.pollEvent(ev)) {
+            if (ev.type == sf::Event::Closed) {
+                pthread_mutex_lock(&(shs->mutex));
+                shs->act = closeApp;
+                pthread_mutex_unlock(&(shs->mutex));
+            }
+            else if (ev.type == sf::Event::MouseMoved) {
+                back.mouseOnButton(ev.mouseMove.x, ev.mouseMove.y);
+            }
+            else if (ev.type == sf::Event::MouseButtonPressed) {
+                // кнопка назад
+                if (back.isClick(ev.mouseButton.x, ev.mouseButton.y)) {
+                    pthread_mutex_lock(&(shs->mutex));
+                    shs->act = mainMenu;
+                    pthread_mutex_unlock(&(shs->mutex));
+                }
+            }
+        }
+
+        window.clear();
+        window.draw(bgSprite);
+        window.draw(winner);
+        window.draw(gameTime);
+        window.draw(rating);
+        window.draw(back.draw());
+        window.display();
+    }
+}
 
 // окно ожидания второго игрока
 void createLobby(sf::RenderWindow &window, SharedState * shs) {

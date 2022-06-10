@@ -211,10 +211,22 @@ void * gameRoutine(void * dta) {
     }
     sprintf(port, "%d", 2207 + game->n);
     if (send(game->client2, port, 10, 0) == SOCKET_ERROR){
-        printf("failed to send port for second client\n");
+        printf("failed to send port for second client (%d)\n", WSAGetLastError());
         return (void *) -3;
     }
     printf ("all ports has been sent\n");
+
+    // обмен игроков логинами
+    char log1[21] = {}, log2[21] = {};
+    int r1 = recv(game->client1, log1, 21, 0);
+    int r2 = recv(game->client2, log2, 21, 0);
+    if (!r1 || !r2 || r1 == SOCKET_ERROR || r2 == SOCKET_ERROR)
+        printf("failed to receive logins of the players\n");
+    if (send(game->client1, log2, (int) strlen(log2) + 1, 0) == SOCKET_ERROR ||
+        send(game->client2, log1, (int) strlen(log1) + 1, 0) == SOCKET_ERROR) {
+        printf("failed to send logins back\n");
+    }
+    printf("logins were exchanged\n");
 
     // буферы для приема информации
     char buffer1[101] = {}, buffer2[101] = {};
@@ -259,5 +271,5 @@ void * gameRoutine(void * dta) {
     closesocket(s2);
     printf("game ended\n");
     free(game);
-}
 
+}

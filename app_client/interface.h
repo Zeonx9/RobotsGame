@@ -15,7 +15,7 @@ extern "C" {
 // константы показывающие, какое на данный момент действие выполняет приложение
 typedef enum activities {
     // константы с явно указанным значениям обозначают экраны, эти значения - индексы в массиве функций отрисовки
-    mainMenu = 0, logHub = 1, gameLobby = 2, play = 3, // экраны приложения
+    mainMenu = 0, logHub = 1, gameLobby = 2, play = 3, gameOver = 4, // экраны приложения
     logIn, registering, // действия в окне регистрации (logHub)
     getRating, joinGame, cancelGame, // действие в лобби (gameLobby)
     closeApp = -1, closeApproved = -2 // закрытие окна
@@ -35,6 +35,11 @@ typedef struct shared_state {
     LoginStates logged;    // выполнен ли вход?
     Activities act; // текущая активность
     PlayerData * player; // информация об игроке
+    struct game_result {
+        float time;
+        char opponentLogin[21];
+        int winner, hits;
+    } gameResult;
 } SharedState;
 
 // для связи с сервером, запускается в отдельном потоке
