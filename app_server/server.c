@@ -160,6 +160,7 @@ void * clientRoutine(void * dta) {
             shd->gManager.count += 2;
             pthread_create(&thread, NULL, gameRoutine, (void *)shd->gManager.game);
             pthread_join(shd->newGameThread, NULL);
+            printf("this should be only printed when the game is over\n");
         }
         else if (r)
             printf("error occurred: %d\n", r);

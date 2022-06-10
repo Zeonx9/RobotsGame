@@ -13,6 +13,7 @@ int main() {
     SharedState * shs = (SharedState *) malloc(sizeof(SharedState));
     shs->connected = shs->gameStarted = 0, shs->act = mainMenu, shs->logged = notLogged;
     shs->player = NULL;
+    shs->gameResult.opponentLogin = (char *) malloc(21 * sizeof(char));
     pthread_mutex_init(&(shs->mutex), NULL);
 
     // создать поток для работы с сетью
@@ -28,6 +29,7 @@ int main() {
 
     // очистить память при выходе из приложения
     pthread_mutex_destroy(&(shs->mutex));
+    free(shs->gameResult.opponentLogin);
     if (shs->player)
         free(shs->player);
     free(shs);

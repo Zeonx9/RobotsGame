@@ -37,7 +37,7 @@ typedef struct shared_state {
     PlayerData * player; // информация об игроке
     struct game_result {
         float time;
-        char opponentLogin[21];
+        char *opponentLogin;
         int winner, hits;
     } gameResult;
 } SharedState;
