@@ -184,35 +184,6 @@ void animatePlayer(Player * p, float t, sf::Sprite &s, float *frame, char **fiel
 
 // начало самой игры
 void beginGame(sf::RenderWindow &window, SharedState * shs){
-    sf::Texture bgTexture, playerTexture, bulletTexture, blockTexture;
-    sf::Sprite bgSprite, s1, s2, bulletS, block;
-    sf::Event ev{};
-
-    Player player1, player2;
-    Bullet bullets[MAX_BULLETS] = {};
-    float animation1, animation2, offsX, offsY;
-
-    bgTexture.loadFromFile("../app_client/src/background.png");
-    playerTexture.loadFromFile("../app_client/src/robotgamesprites.png");
-    bulletTexture.loadFromFile("../app_client/src/bullet.png");
-    blockTexture.loadFromFile("../app_client/src/groupBlocks.png");
-
-    bgSprite.setTexture(bgTexture);
-    bulletS.setTexture(bulletTexture);
-    block.setTexture(blockTexture);
-    s1.setTexture(playerTexture);
-    s2.setTexture(playerTexture);
-    s2.setColor(sf::Color(255, 180, 180));
-
-    // загрузка карты из файла
-    char **field = (char **) malloc(H * sizeof(char *));
-    FILE * file_map = fopen("../app_client/src/test_field.txt", "r");
-    for (int i = 0; i < H; ++i) {
-        field[i] = (char *) malloc(W + 2 * sizeof(char));
-        fgets(field[i], W + 2, file_map);
-    }
-    fclose(file_map);
-
     // создать сокет для клиента и проверить на удачное создание при ошибках закрывать приложение
     SOCKET client;
     client = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
@@ -246,6 +217,34 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
     u_long mode = 1;  // сделать сокет не блокирующим
     ioctlsocket(client, FIONBIO, &mode);
 
+    sf::Texture bgTexture, playerTexture, bulletTexture, blockTexture;
+    sf::Sprite bgSprite, s1, s2, bulletS, block;
+    sf::Event ev{};
+
+    bgTexture.loadFromFile("../app_client/src/background.png");
+    playerTexture.loadFromFile("../app_client/src/robotgamesprites.png");
+    bulletTexture.loadFromFile("../app_client/src/bullet.png");
+    blockTexture.loadFromFile("../app_client/src/groupBlocks.png");
+
+    bgSprite.setTexture(bgTexture);
+    bulletS.setTexture(bulletTexture);
+    block.setTexture(blockTexture);
+    s1.setTexture(playerTexture);
+    s2.setTexture(playerTexture);
+    s2.setColor(sf::Color(255, 180, 180));
+
+    // загрузка карты из файла
+    char **field = (char **) malloc(H * sizeof(char *));
+    FILE * file_map = fopen("../app_client/src/test_field.txt", "r");
+    for (int i = 0; i < H; ++i) {
+        field[i] = (char *) malloc(W + 2 * sizeof(char));
+        fgets(field[i], W + 2, file_map);
+    }
+    fclose(file_map);
+
+    Player player1, player2;
+    Bullet bullets[MAX_BULLETS] = {};
+    float animation1, animation2, offsX, offsY;
     initPlayer(&player1); initPlayer(&player2);
     sf::Clock clock1, clock2, clock3, clock4;
 
