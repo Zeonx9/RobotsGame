@@ -207,7 +207,7 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
     Bullet bullets[10] = {0};
 
     char **field = (char **) malloc(H * sizeof(char *));
-    FILE * file_map = fopen("../app_client/src/test_field", "r");
+    FILE * file_map = fopen("../app_client/src/test_field.txt", "r");
     for (int i = 0; i < H; ++i) {
         field[i] = (char *) malloc(W + 2 * sizeof(char));
         fgets(field[i], W + 2, file_map);
