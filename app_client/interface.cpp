@@ -218,7 +218,7 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
     ioctlsocket(client, FIONBIO, &mode);
 
     sf::Texture bgTexture, playerTexture, bulletTexture, blockTexture;
-    sf::Sprite bgSprite, s1, s2, bulletS, block;
+    sf::Sprite bgSprite, s1, s2, bulletS, block, hp;
     sf::Event ev{};
 
     bgTexture.loadFromFile("../app_client/src/background.png");
@@ -229,6 +229,7 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
     bgSprite.setTexture(bgTexture);
     bulletS.setTexture(bulletTexture);
     block.setTexture(blockTexture);
+    hp.setTexture(bulletTexture);
     s1.setTexture(playerTexture);
     s2.setTexture(playerTexture);
     s2.setColor(sf::Color(255, 180, 180));
@@ -339,7 +340,7 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
                 continue;
             }
             if (b->x > player1.x && b->x < player1.x + WIDTH && b->y > player1.y && b->y < player1.y + HEIGHT){
-                player1.health -= 20;
+                player1.health--;
                 printf("first player got damaged\n");
                 b->dir = 0;
             }
@@ -351,6 +352,21 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
             bulletS.setPosition(b->x - offsX, b->y - offsY);
             window.draw(bulletS);
         }
+
+        // отрисовать полоски жизней
+        for (int i = 0, x = 5, y = 5; i < 5; ++i, x += 40) {
+            if (i + 1 > player1.health)
+                bulletS.setColor(sf::Color(50, 50, 50));
+            bulletS.setPosition(x, y);
+            window.draw(bulletS);
+        } bulletS.setColor(sf::Color::White);
+
+        for (int i = 0, x = 1715, y = 5; i < 5; ++i, x += 40) {
+            if (i + 1 > player2.health)
+                bulletS.setColor(sf::Color(50, 50, 50));
+            bulletS.setPosition(x, y);
+            window.draw(bulletS);
+        } bulletS.setColor(sf::Color::White);
 
         window.display();
 

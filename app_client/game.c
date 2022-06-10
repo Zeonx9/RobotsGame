@@ -5,7 +5,7 @@ void initPlayer(Player *p) {
     p->dx = p->dy = 0;
     p->onGround = 1;
     p->jumped = 0;
-    p->health = 100;
+    p->health = 5;
 }
 
 void initBullet(Player *p, Bullet *bullets){
@@ -18,7 +18,7 @@ void initBullet(Player *p, Bullet *bullets){
         return;
 
     bullet->dir = p->dir;
-    bullet->x = p->x + 40 + 60 * p->dir;
+    bullet->x = p->x + 40 + 50 * p->dir;
     bullet->y = p->y + 40;
     p->shoot = 0;
 }
