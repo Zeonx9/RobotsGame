@@ -10,6 +10,7 @@ void createMenuApp(sf::RenderWindow &window, SharedState * shs);
 void createRegWindow(sf::RenderWindow &window, SharedState * shs);
 void createLobby(sf::RenderWindow &window, SharedState * shs);
 void beginGame(sf::RenderWindow &window, SharedState * shs);
+void endGame(sf::RenderWindow &window, SharedState * shs);
 
 // диспетчер окон приложения
 void windowDispatcher(SharedState * shs) {
@@ -180,6 +181,70 @@ void animatePlayer(Player * p, float t, sf::Sprite &s, float *frame, char **fiel
 
     s.setPosition(p->x - *offsX, p->y - *offsY);
     p->dx = 0;
+}
+
+void endGame(sf::RenderWindow &window, SharedState * shs){
+    int drawConnectionState = -1;
+    sf::Texture bgTexture;
+    sf::Sprite bgSprite;
+    sf::Font font;
+    sf::Event ev{};
+    sf::Text
+            winner("egor", font, 40), //TODO добавить имя победителя
+            gameTime("2min 43sec", font, 40), //TODO посчитать и записать время игры
+            connected("", font, 40),
+            rating("122 13 4", font, 40); //TODO получить свой обновленный рейтинг
+    Button
+            back ("menu", font, 70, 0, 137, 57);
+
+    bgTexture.loadFromFile("../app_client/src/background_eg.png");
+    font.loadFromFile("../app_client/src/gameFont.otf");
+    bgSprite.setTexture(bgTexture);
+
+    winner.setPosition(855, 550);
+    winner.setFillColor(sf::Color(143, 200, 99));
+    gameTime.setPosition(777, 610);
+    gameTime.setFillColor(sf::Color(143, 200, 99));
+    connected.setPosition(1681, 970);
+    rating.setPosition(973, 670);
+    rating.setFillColor(sf::Color(143, 200, 99));
+    back.setPosition(45, 944);
+
+    while (window.isOpen()) {
+        while (window.pollEvent(ev)) {
+            if (ev.type == sf::Event::Closed) {
+                pthread_mutex_lock(&(shs->mutex));
+                shs->act = closeApp;
+                pthread_mutex_unlock(&(shs->mutex));
+            }
+            else if (ev.type == sf::Event::MouseMoved) {
+                back.mouseOnButton(ev.mouseMove.x, ev.mouseMove.y);
+            }
+            else if (ev.type == sf::Event::MouseButtonPressed) {
+                // кнопка назад
+                if (back.isClick(ev.mouseButton.x, ev.mouseButton.y)) {
+                    pthread_mutex_lock(&(shs->mutex));
+                    shs->act = mainMenu;
+                    pthread_mutex_unlock(&(shs->mutex));
+                }
+            }
+        }
+
+        if (drawConnectionState != shs->connected) {
+            drawConnectionState = shs->connected;
+            connected.setString(drawConnectionState ? "   connected" : "disconnected");
+            connected.setFillColor(drawConnectionState ? sf::Color(143, 200, 99) : sf::Color(176, 52, 37));
+        }
+
+        window.clear();
+        window.draw(bgSprite);
+        window.draw(winner);
+        window.draw(gameTime);
+        window.draw(rating);
+        window.draw(connected);
+        window.draw(back.draw());
+        window.display();
+    }
 }
 
 // начало самой игры
