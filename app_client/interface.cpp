@@ -2,6 +2,9 @@
 #include "interface.h"
 #include "intfc_classes.h"
 
+#define W 64
+#define H 36
+
 // объявления функций для отрисовки окон
 void createMenuApp(sf::RenderWindow &window, SharedState * shs);
 void createRegWindow(sf::RenderWindow &window, SharedState * shs);
@@ -146,9 +149,14 @@ void * requestsRoutine(void * dta) {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // передвижение и анимация персонажа
-void animatePlayer(Player * p, float t, sf::Sprite &s, float *frame) {
+void animatePlayer(Player * p, float t, sf::Sprite &s, float *frame, char **field, float *offsX, float *offsY, int self) {
     t /= 500;
-    updatePlayer(p, t);
+    updatePlayer(p, t, field);
+
+    if (self) {
+        if (p->x > 770 && p->x < 2700) *offsX = p->x - 770.f;
+        if (p->y > 480 && p->y < 1560) *offsY = p->y - 480.f;
+    }
 
     *frame += .0075f * t; // анимация
     if (*frame >= 12)
@@ -170,31 +178,41 @@ void animatePlayer(Player * p, float t, sf::Sprite &s, float *frame) {
         else s.setTextureRect(sf::IntRect(WIDTH * (int)(*frame+ 1), HEIGHT, -WIDTH, HEIGHT));
     }
 
-    s.setPosition(p->x, p->y);
+    s.setPosition(p->x - *offsX, p->y - *offsY);
     p->dx = 0;
 }
 
 // начало самой игры
 void beginGame(sf::RenderWindow &window, SharedState * shs){
-    sf::Texture bgTexture, playerTexture, bulletTexture;
-    sf::Sprite bgSprite, s1, s2, bulletS;
+    sf::Texture bgTexture, playerTexture, bulletTexture, blockTexture;
+    sf::Sprite bgSprite, s1, s2, bulletS, block;
     sf::Event ev{};
     sf::Clock clock1, clock2, clock3, clock4;
     Player player1, player2;
-    float animation1, animation2;
-    initPlayer(&player1);
-    initPlayer(&player2);
+    float animation1, animation2, offsX, offsY;
+    initPlayer(&player1); initPlayer(&player2);
 
     bgTexture.loadFromFile("../app_client/src/background.png");
     playerTexture.loadFromFile("../app_client/src/robotgamesprites.png");
     bulletTexture.loadFromFile("../app_client/src/bullet.png");
+    blockTexture.loadFromFile("../app_client/src/groupBlocks.png");
     bgSprite.setTexture(bgTexture);
     bulletS.setTexture(bulletTexture);
+    block.setTexture(blockTexture);
+
     s1.setTexture(playerTexture);
     s2.setTexture(playerTexture);
     s2.setColor(sf::Color(255, 180, 180));
 
     Bullet bullets[10] = {0};
+
+    char **field = (char **) malloc(H * sizeof(char *));
+    FILE * file_map = fopen("../app_client/src/test_field", "r");
+    for (int i = 0; i < H; ++i) {
+        field[i] = (char *) malloc(W + 2 * sizeof(char));
+        fgets(field[i], W + 2, file_map);
+    }
+    fclose(file_map);
 
     // создать сокет для клиента и проверить на удачное создание при ошибках закрывать приложение
     SOCKET client;
@@ -204,6 +222,7 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
         pthread_mutex_lock(&(shs->mutex));
         shs->act = closeApp;
         pthread_mutex_unlock(&(shs->mutex));
+        return;
     }
     char portBuf[5] = {};
     // получить порт для подключения
@@ -213,6 +232,7 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
         pthread_mutex_lock(&(shs->mutex));
         shs->act = closeApp;
         pthread_mutex_unlock(&(shs->mutex));
+        return;
     }
     u_short port = atoi(portBuf); // извлечь число из строки
 
@@ -267,7 +287,7 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
 
         // отправить информацию о себе, затем анимировать персонажа
         sendto(client, (const char *) &player1, sizeof(Player), 0, (SOCKADDR *) &saddr, sizeof(saddr));
-        animatePlayer(&player1, (float) clock1.restart().asMicroseconds(), s1, &animation1);
+        animatePlayer(&player1, (float) clock1.restart().asMicroseconds(), s1, &animation1, field, &offsX, &offsY, 1);
 
         // получить информацию о сопернике (в буфер)
         int len = recvfrom(client, buffer, 100, 0, (SOCKADDR *) &saddr, &size);
@@ -288,10 +308,22 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
             printf("error occurred in receiving data (%d)\n", len);
             err++;
         }
-        animatePlayer(&player2, (float) clock2.restart().asMicroseconds(), s2, &animation2);
+        animatePlayer(&player2, (float) clock2.restart().asMicroseconds(), s2, &animation2, field, &offsX, &offsY, 0);
 
         window.clear();
+        bgSprite.setPosition(- 0.5 * offsX, - 0.5 * offsY);
         window.draw(bgSprite);
+
+
+        for (int i = 0; i < H; ++i)
+            for (int j = 0; j < W; ++j) {
+                if (field[i][j] == '0')
+                    continue;
+                block.setTextureRect(sf::IntRect((field[i][j] - '1') * TILE, 0, TILE, TILE));
+                block.setPosition(j * TILE - offsX, i * TILE - offsY);
+                window.draw(block);
+            }
+
         window.draw(s2);
         window.draw(s1);
 
@@ -307,8 +339,6 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
                 }
             }
         }
-
-
 
         window.display();
 
