@@ -349,6 +349,9 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
             pthread_mutex_unlock(&(shs->mutex));
         }
     }
+    for (int i = 0; i < H; ++i)
+        free(field[i]);
+    free(field);
     printf("exiting playing room\n");
     closesocket(client);
 }

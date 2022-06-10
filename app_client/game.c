@@ -3,7 +3,8 @@
 void initPlayer(Player *p) {
     p->y = p->x = 60;
     p->dx = p->dy = 0;
-    p->onGround = p->jumped = 0;
+    p->onGround = 1;
+    p->jumped = 0;
 }
 
 void initBullet(Player *p, Bullet *bullets){
