@@ -188,7 +188,9 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
     sf::Sprite bgSprite, s1, s2, bulletS, block;
     sf::Event ev{};
     sf::Clock clock1, clock2, clock3, clock4;
+
     Player player1, player2;
+    Bullet bullets[MAX_BULLETS] = {};
     float animation1, animation2, offsX, offsY;
     initPlayer(&player1); initPlayer(&player2);
 
@@ -196,16 +198,15 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
     playerTexture.loadFromFile("../app_client/src/robotgamesprites.png");
     bulletTexture.loadFromFile("../app_client/src/bullet.png");
     blockTexture.loadFromFile("../app_client/src/groupBlocks.png");
+
     bgSprite.setTexture(bgTexture);
     bulletS.setTexture(bulletTexture);
     block.setTexture(blockTexture);
-
     s1.setTexture(playerTexture);
     s2.setTexture(playerTexture);
     s2.setColor(sf::Color(255, 180, 180));
 
-    Bullet bullets[10] = {0};
-
+    // загрузка карты из файла
     char **field = (char **) malloc(H * sizeof(char *));
     FILE * file_map = fopen("../app_client/src/test_field.txt", "r");
     for (int i = 0; i < H; ++i) {
@@ -273,21 +274,20 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
 
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right))
             walk(&player1, Right);
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left)) {
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
             walk(&player1, Left);
-        }
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up)) {
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up))
             leap(&player1);
-        }
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space) && clock3.getElapsedTime().asMilliseconds() > 600){
-            initBullet(&player1, bullets);
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space) &&
+            clock3.getElapsedTime().asMilliseconds() > 600) {
+            player1.shoot = 1;
             clock3.restart();
         }
-
 
         // отправить информацию о себе, затем анимировать персонажа
         sendto(client, (const char *) &player1, sizeof(Player), 0, (SOCKADDR *) &saddr, sizeof(saddr));
         animatePlayer(&player1, (float) clock1.restart().asMicroseconds(), s1, &animation1, field, &offsX, &offsY, 1);
+        initBullet(&player1, bullets);
 
         // получить информацию о сопернике (в буфер)
         int len = recvfrom(client, buffer, 100, 0, (SOCKADDR *) &saddr, &size);
@@ -309,12 +309,13 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
             err++;
         }
         animatePlayer(&player2, (float) clock2.restart().asMicroseconds(), s2, &animation2, field, &offsX, &offsY, 0);
+        initBullet(&player2, bullets);
 
         window.clear();
         bgSprite.setPosition(- 0.5 * offsX, - 0.5 * offsY);
         window.draw(bgSprite);
 
-
+        // отрисовать карту
         for (int i = 0; i < H; ++i)
             for (int j = 0; j < W; ++j) {
                 if (field[i][j] == '0')
@@ -324,34 +325,49 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
                 window.draw(block);
             }
 
+        // отрисовать игроков
         window.draw(s2);
         window.draw(s1);
 
-        for (auto & bullet : bullets) {
-            if (bullet.dir != 0){
+        // отрисовать пули
+        float time = clock4.restart().asMicroseconds();
+        for (Bullet *b = bullets; b < bullets + MAX_BULLETS; ++b) {
+            if (!b->dir)
+                continue;
 
-                bulletS.setPosition(bullet.x, bullet.y + 40);
-                window.draw(bulletS);
-                bullet.x += bullet.dir * 1000 * 2 * 0.02f;
-                if (((bullet.x >= player2.x && bullet.x <= player2.x + WIDTH) && (bullet.y >= player2.y && bullet.y
-                        <= player2.y + HEIGHT)) || ( bullet.x > 1920 || bullet.x < 0)){
-                    bullet.dir = 0;
-                }
+            b->x += b->dir * time * 0.002f;
+            if (field[(int)b->y / TILE][(int)b->x / TILE] > '0') {
+                b->dir = 0;
+                continue;
             }
+            if (b->x > player1.x && b->x < player1.x + WIDTH && b->y > player1.y && b->y < player1.y + HEIGHT){
+                printf("first player got damaged\n");
+                b->dir = 0;
+            }
+            if (b->x > player2.x && b->x < player2.x + WIDTH && b->y > player2.y && b->y < player2.y + HEIGHT){
+                printf("second player got damaged\n");
+                b->dir = 0;
+            }
+
+            bulletS.setPosition(b->x - offsX, b->y - offsY);
+            window.draw(bulletS);
         }
 
         window.display();
 
-        if (err > 300) {
+        if (err > 300) { // проверка, что второй клиент отключился аварийно
             pthread_mutex_lock(&(shs->mutex));
             if (shs->act > 0)
                 shs->act = mainMenu;
             pthread_mutex_unlock(&(shs->mutex));
         }
     }
+
+    // очистить память занятую полем
     for (int i = 0; i < H; ++i)
         free(field[i]);
     free(field);
+
     printf("exiting playing room\n");
     closesocket(client);
 }

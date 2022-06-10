@@ -8,15 +8,18 @@ void initPlayer(Player *p) {
 }
 
 void initBullet(Player *p, Bullet *bullets){
-//    p->wasShoot = 1;
-    for (int i = 0; i < 10; ++i) {
-        if (bullets[i].dir == 0){
-            bullets[i].dir = p->dir;
-            bullets[i].x = p->x;
-            bullets[i].y = p->y;
-            break;
-        }
-    }
+    if (!p->shoot)
+        return;
+
+    Bullet * bullet = bullets;
+    while (bullet->dir && bullet < bullets + MAX_BULLETS) ++bullet;
+    if (bullet == bullets + MAX_BULLETS)
+        return;
+
+    bullet->dir = p->dir;
+    bullet->x = p->x + 40 + 60 * p->dir;
+    bullet->y = p->y + 40;
+    p->shoot = 0;
 }
 
 void collisionY(Player *p, char ** field) {
