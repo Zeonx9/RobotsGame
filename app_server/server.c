@@ -243,6 +243,10 @@ void * gameRoutine(void * dta) {
     SOCKADDR_IN addr1, addr2; int size = sizeof(addr1);
 
     int err1 = 0, err2 = 0;
+    u_long mode = 1;  // сделать сокет не блокирующим
+    ioctlsocket(s1, FIONBIO, &mode);
+    ioctlsocket(s2, FIONBIO, &mode);
+
     printf("game started\n");
     while (1) {
         // получить информацию от обоих клиентов
@@ -275,6 +279,11 @@ void * gameRoutine(void * dta) {
         len2 = sendto(s2, (const char *) &p1, sizeof(p1), 0, (SOCKADDR *) &addr2, sizeof(addr2));
         if (len1 != sizeof(p1) || len2 != sizeof(p2))
             printf("error occurred while sending (%d, %d)\n", len1, len2);
+
+        if (err1 > 100 || err2 > 100) {
+            printf("to many errors\n");
+            break;
+        }
     }
     closesocket(s1);
     closesocket(s2);

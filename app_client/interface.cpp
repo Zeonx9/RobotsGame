@@ -215,13 +215,13 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
 
     // обменяться логинами с соперником
     if (send(shs->sock, shs->player->login, (int) strlen(shs->player->login) + 1, 0) == SOCKET_ERROR)
-        printf("my name was not sent to the opponent");
+        printf("my name was not sent to the opponent\n");
     r = recv(shs->sock, shs->gameResult.opponentLogin, 21, 0);
     if (!r || r == SOCKET_ERROR){
         printf("has not received the name of the opponent\n");
         shs->gameResult.opponentLogin[0] = 0;
     } else
-        printf("got the name of enemy");
+        printf("got the name of enemy '%s'\n", shs->gameResult.opponentLogin);
 
     char buffer[101], no[] = "NO";
     int err = 0;
