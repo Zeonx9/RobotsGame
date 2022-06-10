@@ -187,12 +187,10 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
     sf::Texture bgTexture, playerTexture, bulletTexture, blockTexture;
     sf::Sprite bgSprite, s1, s2, bulletS, block;
     sf::Event ev{};
-    sf::Clock clock1, clock2, clock3, clock4;
 
     Player player1, player2;
     Bullet bullets[MAX_BULLETS] = {};
     float animation1, animation2, offsX, offsY;
-    initPlayer(&player1); initPlayer(&player2);
 
     bgTexture.loadFromFile("../app_client/src/background.png");
     playerTexture.loadFromFile("../app_client/src/robotgamesprites.png");
@@ -236,7 +234,6 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
         return;
     }
     u_short port = atoi(portBuf); // извлечь число из строки
-
     // описание сервера для подключения
     SOCKADDR_IN saddr; int size = sizeof(saddr);
     saddr.sin_family = AF_INET;
@@ -246,9 +243,11 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
 
     char buffer[101], no[] = "NO";
     int err = 0;
-
     u_long mode = 1;  // сделать сокет не блокирующим
     ioctlsocket(client, FIONBIO, &mode);
+
+    initPlayer(&player1); initPlayer(&player2);
+    sf::Clock clock1, clock2, clock3, clock4;
 
     while(window.isOpen() && shs->act == play) {
         while (window.pollEvent(ev)) {
