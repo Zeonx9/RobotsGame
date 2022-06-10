@@ -231,8 +231,9 @@ void * gameRoutine(void * dta) {
     int r2 = recv(game->client2, log2, 21, 0);
     if (!r1 || !r2 || r1 == SOCKET_ERROR || r2 == SOCKET_ERROR)
         printf("failed to receive logins of the players\n");
-    if (send(game->client1, log2, (int) strlen(log2) + 1, 0) == SOCKET_ERROR ||
-        send(game->client2, log1, (int) strlen(log1) + 1, 0) == SOCKET_ERROR) {
+    printf("log1 = %s, log2 = %s\n", log1, log2);
+    if (send(game->client1, log2, 21, 0) == SOCKET_ERROR ||
+        send(game->client2, log1, 21, 0) == SOCKET_ERROR) {
         printf("failed to send logins back\n");
     } else
         printf("logins were exchanged\n");

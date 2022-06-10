@@ -214,14 +214,15 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
     printf("udp socket has been configured (port = %d)\n", port);
 
     // обменяться логинами с соперником
-    if (send(shs->sock, shs->player->login, (int) strlen(shs->player->login) + 1, 0) == SOCKET_ERROR)
+    char logOpp[21];
+    if (send(shs->sock, shs->player->login, 21, 0) == SOCKET_ERROR)
         printf("my name was not sent to the opponent\n");
-    r = recv(shs->sock, shs->gameResult.opponentLogin, 21, 0);
+
+    r = recv(shs->sock, logOpp, 21, 0);
     if (!r || r == SOCKET_ERROR){
         printf("has not received the name of the opponent\n");
-        shs->gameResult.opponentLogin[0] = 0;
     } else
-        printf("got the name of enemy '%s'\n", shs->gameResult.opponentLogin);
+        printf("got the name of enemy '%s'(%d)\n", logOpp, r);
 
     char buffer[101], no[] = "NO";
     int err = 0;
