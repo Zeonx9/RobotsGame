@@ -270,7 +270,7 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
 
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Q)) {
             sendto(client, no, 3, 0, (SOCKADDR *) &saddr, sizeof(saddr));
-            printf("Q no sent\n");
+            printf("Q sent\n");
             pthread_mutex_lock(&(shs->mutex));
             shs->act = closeApp;
             pthread_mutex_unlock(&(shs->mutex));
@@ -306,6 +306,18 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
             }
             pthread_mutex_unlock(&(shs->mutex));
             printf("to main Menu\n");
+            break;
+        }
+        else if (strcmp(buffer, "OVER") == 0) {
+            shs->gameResult->winner = player1.health > 0;
+            shs->gameResult->hits = 5 - player2.health;
+            shs->gameResult->time = overall.getElapsedTime().asSeconds();
+            printf("game is over\n");
+
+            pthread_mutex_lock(&(shs->mutex));
+            shs->act = gameOver;
+            pthread_mutex_unlock(&(shs->mutex));
+            break;
         }
         // если нет ошибок передачи сохраняем данные в объекте клиента
         if (len == sizeof(player2)) {
@@ -389,20 +401,6 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
             pthread_mutex_lock(&(shs->mutex));
             if (shs->act > 0)
                 shs->act = mainMenu;
-            pthread_mutex_unlock(&(shs->mutex));
-        }
-
-        // проверка на окончание игры
-        if (player1.health < 1 || player2.health < 1) {
-            shs->gameResult->winner = player1.health > 0;
-            shs->gameResult->hits = 5 - player2.health;
-            shs->gameResult->time = overall.getElapsedTime().asSeconds();
-
-            sendto(client, no, 3, 0, (SOCKADDR *) &saddr, sizeof(saddr));
-            printf("game is over, NO is sent");
-
-            pthread_mutex_lock(&(shs->mutex));
-            shs->act = gameOver;
             pthread_mutex_unlock(&(shs->mutex));
         }
     }

@@ -222,7 +222,7 @@ void * gameRoutine(void * dta) {
         game->hasFinished = 1;
         return (void *) -3;
     }
-    sprintf(portAndLogin, "%d %s", 2207 + game->n, game->login2);
+    sprintf(portAndLogin, "%d %s", 2207 + game->n, game->login1);
     if (send(game->client2, portAndLogin, 40, 0) == SOCKET_ERROR){
         printf("failed to send port for second client (%d)\n", WSAGetLastError());
         game->hasFinished = 1;
@@ -236,9 +236,9 @@ void * gameRoutine(void * dta) {
     SOCKADDR_IN addr1, addr2; int size = sizeof(addr1);
 
     int err1 = 0, err2 = 0;
-    u_long mode = 1;  // сделать сокет не блокирующим
-    ioctlsocket(s1, FIONBIO, &mode);
-    ioctlsocket(s2, FIONBIO, &mode);
+//    u_long mode = 1;  // сделать сокет не блокирующим
+//    ioctlsocket(s1, FIONBIO, &mode);
+//    ioctlsocket(s2, FIONBIO, &mode);
 
     printf("game started\n");
     while (1) {
@@ -265,6 +265,14 @@ void * gameRoutine(void * dta) {
             memcpy(&p1, buffer1, len1);
             memcpy(&p2, buffer2, len2);
             err1 = err2 = 0;
+        }
+        //  игра завершается победой одного из игроков
+        if (p1.health < 1 || p2.health < 1) {
+            printf("someone was killed\n");
+            sprintf(buffer1, "OVER");
+            sendto(s2, buffer1, 5, 0, (SOCKADDR *) &addr2, sizeof(addr2));
+            sendto(s1, buffer1, 5, 0, (SOCKADDR *) &addr1, sizeof(addr1));
+            break;
         }
 
         // отправить ответ каждому
