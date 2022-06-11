@@ -1,7 +1,6 @@
 #ifndef ROBOTSGAME_FIELD_H
 #define ROBOTSGAME_FIELD_H
 
-#include <SFML/Graphics/RenderWindow.hpp>
 #include <SFML/Graphics.hpp>
 
 void createField(sf::RenderWindow &window);
