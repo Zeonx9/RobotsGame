@@ -268,6 +268,7 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
     initPlayer(&player1); initPlayer(&player2);
     if (port % 2 == 1) {
         player1.x = 3660; player1.dir = -1;
+        offsX = 1920;
     }
     sf::Clock clock1, clock2, bulletTimer, clockBullets, overall;
 
@@ -389,7 +390,8 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
         }
 
         // отрисовать полоски жизней
-        for (int i = 0, x1 = 5, x2 = 1715, y = 5; i < 5; ++i, x1 += 40, x2 += 40) {
+        int side = port % 2;
+        for (int i = 0, x1 = side ? 1715 : 5, x2 = side ? 5 : 1715, y = 5; i < 5; ++i, x1 += 40, x2 += 40) {
             if (i + 1 > player1.health)
                 bulletS.setColor(sf::Color(50, 50, 50));
             bulletS.setPosition(x1, y);
@@ -403,10 +405,10 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
         }
         // имена игроков
         name.setString(shs->player->login);
-        name.setPosition(220, 5);
+        name.setPosition(side ? 1700 - name.getGlobalBounds().width : 220, 2);
         window.draw(name);
         name.setString(shs->gameResult->opponentLogin);
-        name.setPosition(1615, 5);
+        name.setPosition(side ? 220 : 1700 - name.getGlobalBounds().width, 2);
         window.draw(name);
 
         window.display();
