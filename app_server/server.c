@@ -138,7 +138,7 @@ void * clientRoutine(void * dta) {
         //  принять сообщение от клиента
         int res = recv(client, msg, 1025, 0);
         if (!res || res == SOCKET_ERROR) {
-            printf("!! ERROR RECEIVE MESSAGE, CLIENT DISCONNECTED\n");
+            printf("!! ERROR RECEIVE MESSAGE, CLIENT DISCONNECTED (%llu)\n", client);
             break;
         }
 
@@ -162,16 +162,16 @@ void * clientRoutine(void * dta) {
             pthread_create(&thread, NULL, gameRoutine, (void *)curGame);
             pthread_detach(thread);
             while(!curGame->hasFinished);
-            printf("this should be only printed when the game is over\n");
+            printf("this should be only printed when the game is over (%llu)\n", client);
             free(curGame);
         }
         else if (r == JUST_WAIT) {
             Game * curGame = shd->gManager.game;
             while (!curGame->hasFinished);
-            printf("waited thread was resumed\n");
+            printf("waited thread was resumed (%llu)\n", client);
         }
         else if (r)
-            printf("error occurred: %d\n", r);
+            printf("error occurred: %d (%llu)\n", r, client);
     }
 
     // клиент отключился, удаляем из списка
@@ -191,6 +191,7 @@ void * gameRoutine(void * dta) {
     s2 = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (s1 == SOCKET_ERROR || s2 == SOCKET_ERROR) {
         printf("failed to create udp server(%d)\n", WSAGetLastError());
+        game->hasFinished = 1;
         return (void *) -1;
     }
 
@@ -202,41 +203,32 @@ void * gameRoutine(void * dta) {
     if (bind(s1, (SOCKADDR *) &serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
         printf("failed to bound udp server, port %d (%d)\n", serverAddr.sin_port, WSAGetLastError());
         closesocket(s1), closesocket(s2);
+        game->hasFinished = 1;
         return (void *) -2;
     }
     serverAddr.sin_port = htons(2207 + game->n);
     if (bind(s2, (SOCKADDR *) &serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
         printf("failed to bound udp server, port %d (%d)\n", serverAddr.sin_port, WSAGetLastError());
+        game->hasFinished = 1;
         return (void *) -2;
     }
     printf("sockets bound to ports\n");
 
     // отправить каждому клиенту порт, по которому он будет обмениваться информацией
-    char port[10] = {};
-    sprintf(port, "%d", 2206 + game->n);
-    if(send(game->client1, port, 10, 0) == SOCKET_ERROR) {
+    char portAndLogin[40] = {};
+    sprintf(portAndLogin, "%d %s", 2206 + game->n, game->login2);
+    if(send(game->client1, portAndLogin, 40, 0) == SOCKET_ERROR) {
         printf("failed to send port for first client\n");
+        game->hasFinished = 1;
         return (void *) -3;
     }
-    sprintf(port, "%d", 2207 + game->n);
-    if (send(game->client2, port, 10, 0) == SOCKET_ERROR){
+    sprintf(portAndLogin, "%d %s", 2207 + game->n, game->login2);
+    if (send(game->client2, portAndLogin, 40, 0) == SOCKET_ERROR){
         printf("failed to send port for second client (%d)\n", WSAGetLastError());
+        game->hasFinished = 1;
         return (void *) -3;
     }
-    printf ("all ports has been sent\n");
-
-    // обмен игроков логинами
-    char log1[21] = {}, log2[21] = {};
-    int r1 = recv(game->client1, log1, 21, 0);
-    int r2 = recv(game->client2, log2, 21, 0);
-    if (!r1 || !r2 || r1 == SOCKET_ERROR || r2 == SOCKET_ERROR)
-        printf("failed to receive logins of the players\n");
-    printf("log1 = %s, log2 = %s\n", log1, log2);
-    if (send(game->client1, log2, 21, 0) == SOCKET_ERROR ||
-        send(game->client2, log1, 21, 0) == SOCKET_ERROR) {
-        printf("failed to send logins back\n");
-    } else
-        printf("logins were exchanged\n");
+    printf ("all ports and logins has been sent\n");
 
     // буферы для приема информации
     char buffer1[101] = {}, buffer2[101] = {};
@@ -254,12 +246,12 @@ void * gameRoutine(void * dta) {
         int len1, len2;
         len1 = recvfrom(s1, buffer1, 100, 0, (SOCKADDR *) &addr1, &size);
         len2 = recvfrom(s2, buffer2, 100, 0, (SOCKADDR *) &addr2, &size);
-        if (strcmp(buffer1, "NO") == 0 || err1 > 30) { // первый отключился
+        if (strcmp(buffer1, "NO") == 0) { // первый отключился
             printf("client1 has sent no\n");
             sendto(s2, buffer1, 3, 0, (SOCKADDR *) &addr2, sizeof(addr2));
             break;
         }
-        if (strcmp(buffer2, "NO") == 0 || err2 > 30) { // второй отключился
+        if (strcmp(buffer2, "NO") == 0) { // второй отключился
             printf("client2 has sent no\n");
             sendto(s1, buffer2, 3, 0, (SOCKADDR *) &addr1, sizeof(addr1));
             break;

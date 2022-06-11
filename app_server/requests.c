@@ -59,16 +59,18 @@ int reqRating(char * in, char * out, SharedData *shd) {
     return 0;
 }
 
-// обработчик запроса на присоединение к игре или созданию
+// обработчик запроса на присоединение к игре или созданию (D)
 int reqJoinGame(char * in, char * out, SharedData *shd) {
     SOCKET sock = shd->sock;
     int id;
-    sscanf(in, "D %d", &id);
+    char login[21];
+    sscanf(in, "D %d %s", &id, login);
     if (!shd->gManager.hasActiveGame) {
         shd->gManager.game = (Game *) malloc(sizeof(Game));
         shd->gManager.game->hasFinished = 0;
         shd->gManager.hasActiveGame = 1;
         shd->gManager.game->id1 = id;
+        strcpy(shd->gManager.game->login1, login);
         shd->gManager.game->client1 = sock;
         shd->gManager.game->client2 = INVALID_SOCKET;
         sprintf(out, "W");
@@ -86,13 +88,17 @@ int reqJoinGame(char * in, char * out, SharedData *shd) {
 
     sprintf(out, "C");
     shd->gManager.game->id2 = id;
+    strcpy(shd->gManager.game->login2, login);
     shd->gManager.game->client2 = sock;
     return JUST_WAIT;
 }
 
+// запрос отмены игры (E)
 int reqCancelGame(char * in, char * out, SharedData *shd) {
-    free(shd->gManager.game);
-    shd->gManager.hasActiveGame = 0;
+    if (shd->gManager.hasActiveGame) {
+        shd->gManager.hasActiveGame = 0;
+        free(shd->gManager.game);
+    }
     sprintf(out, "O");
     return 0;
 }

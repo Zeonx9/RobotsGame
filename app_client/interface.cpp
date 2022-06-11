@@ -110,7 +110,7 @@ void * requestsRoutine(void * dta) {
         }
         // подключиться к игре или создать новую
         else if (shs->act == joinGame) {
-            sprintf(bufIn, "D %d", shs->player->ID);
+            sprintf(bufIn, "D %d %s", shs->player->ID, shs->player->login);
             int res = serverSession(shs->sock, bufIn, bufOut);
             if (res) {
                 shs->connected = 0;
@@ -195,9 +195,9 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
         pthread_mutex_unlock(&(shs->mutex));
         return;
     }
-    char portBuf[5] = {};
+    char portBuf[40] = {};
     // получить порт для подключения
-    int r = recv(shs->sock, portBuf, 5, 0);
+    int r = recv(shs->sock, portBuf, 40, 0);
     if (!r || r == SOCKET_ERROR) {
         printf("error in receiving port\n");
         pthread_mutex_lock(&(shs->mutex));
@@ -205,24 +205,15 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
         pthread_mutex_unlock(&(shs->mutex));
         return;
     }
-    u_short port = atoi(portBuf); // извлечь число из строки
+    u_short port;
+    sscanf(portBuf, "%lu %s", &port, shs->gameResult->opponentLogin); // извлечь число из строки
     // описание сервера для подключения
     SOCKADDR_IN saddr; int size = sizeof(saddr);
     saddr.sin_family = AF_INET;
-    saddr.sin_port = htons(port); // такой же порт как на сервере
+    saddr.sin_port = htons(port); // такой же порт как на сервер
     saddr.sin_addr.S_un.S_addr = inet_addr(IP); // Zeon's IP адрес
-    printf("udp socket has been configured (port = %d)\n", port);
-
-    // обменяться логинами с соперником
-    char logOpp[21];
-    if (send(shs->sock, shs->player->login, 21, 0) == SOCKET_ERROR)
-        printf("my name was not sent to the opponent\n");
-
-    r = recv(shs->sock, logOpp, 21, 0);
-    if (!r || r == SOCKET_ERROR){
-        printf("has not received the name of the opponent\n");
-    } else
-        printf("got the name of enemy '%s'(%d)\n", logOpp, r);
+    printf("udp socket has been configured (port = %d)\nopponetLogin: %s\n",
+           port, shs->gameResult->opponentLogin);
 
     char buffer[101], no[] = "NO";
     int err = 0;
@@ -388,7 +379,7 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
         name.setString(shs->player->login);
         name.setPosition(220, 5);
         window.draw(name);
-        name.setString(shs->gameResult.opponentLogin);
+        name.setString(shs->gameResult->opponentLogin);
         name.setPosition(1615, 5);
         window.draw(name);
 
@@ -403,10 +394,9 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
 
         // проверка на окончание игры
         if (player1.health < 1 || player2.health < 1) {
-            if (player1.health > 0)
-                shs->gameResult.winner = 1;
-            shs->gameResult.hits = 5 - player2.health;
-            shs->gameResult.time = overall.getElapsedTime().asSeconds();
+            shs->gameResult->winner = player1.health > 0;
+            shs->gameResult->hits = 5 - player2.health;
+            shs->gameResult->time = overall.getElapsedTime().asSeconds();
 
             sendto(client, no, 3, 0, (SOCKADDR *) &saddr, sizeof(saddr));
             printf("game is over, NO is sent");
@@ -430,16 +420,16 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
 void endGame(sf::RenderWindow &window, SharedState * shs){
     int drawConnectionState = -1;
     char timeStr[30], newRating[60];
-    sprintf(timeStr, "%dmin %dsec", (int)shs->gameResult.time / 60, (int)shs->gameResult.time % 60);
+    sprintf(timeStr, "%2d min  %2d sec", (int)shs->gameResult->time / 60, (int)shs->gameResult->time % 60);
     sprintf(newRating, "%d\t%d\t%d",
-            shs->player->highScore + shs->gameResult.hits,
-            shs->player->wins + shs->gameResult.winner, shs->player->gamesPlayed + 1);
+            shs->player->highScore + shs->gameResult->hits,
+            shs->player->wins + shs->gameResult->winner, shs->player->gamesPlayed + 1);
     sf::Texture bgTexture;
     sf::Sprite bgSprite;
     sf::Font font;
     sf::Event ev{};
     sf::Text
-            winner(shs->gameResult.winner ? shs->player->login : shs->gameResult.opponentLogin, font, 40),
+            winner(shs->gameResult->winner ? shs->player->login : shs->gameResult->opponentLogin, font, 40),
             gameTime(timeStr, font, 40),
             rating(newRating, font, 40);
     Button
@@ -491,6 +481,12 @@ void endGame(sf::RenderWindow &window, SharedState * shs){
 void createLobby(sf::RenderWindow &window, SharedState * shs) {
     int drawConnectionState = -1;
     char myInfo[100];
+    // запросить рейтинг
+    pthread_mutex_lock(&(shs->mutex));
+    shs->act = getRating;
+    pthread_mutex_unlock(&(shs->mutex));
+    printf("getting rating %d\n", shs->act);
+
     sf::Texture bgTexture;
     sf::Sprite bgSprite;
     sf::Font font;
@@ -519,16 +515,12 @@ void createLobby(sf::RenderWindow &window, SharedState * shs) {
     me.setPosition(155, 402);
     me.setFillColor(sf::Color(143, 200, 99));
 
-    // запросить рейтинг
-    pthread_mutex_lock(&(shs->mutex));
-    shs->act = getRating;
-    pthread_mutex_unlock(&(shs->mutex));
-    printf("get rating %d\n", shs->act);
     while (shs->act == getRating); // ожидание ответа от сервера
     if (!shs->connected)
         rating.setString("Cannot get current rating!\n");
     else {
         rating.setString(shs->rating);
+        printf("rating set\n");
         free(shs->rating); shs->rating = NULL;
     } shs->gameStarted = 0; // игра ещё не началась
 
@@ -545,6 +537,7 @@ void createLobby(sf::RenderWindow &window, SharedState * shs) {
             else if (ev.type == sf::Event::MouseButtonPressed) {
                 // кнопка назад
                 if (back.isClick(ev.mouseButton.x, ev.mouseButton.y)) {
+                    printf("canceling the game\n");
                     pthread_mutex_lock(&(shs->mutex));
                     shs->act = cancelGame;
                     pthread_mutex_unlock(&(shs->mutex));

@@ -26,6 +26,11 @@ typedef enum login_states {
     noSuchUser = -11, wrongPassword = -12, alreadyExists = -2, notLogged = 0, success = 1
 } LoginStates;
 
+typedef struct game_result {
+    char opponentLogin[21];
+    int time, winner, hits;
+} GameResult;
+
 // структура для связи потока связи с сервером с интерфейсом
 typedef struct shared_state {
     char * logInfo, * rating;
@@ -35,11 +40,7 @@ typedef struct shared_state {
     LoginStates logged;    // выполнен ли вход?
     Activities act; // текущая активность
     PlayerData * player; // информация об игроке
-    struct game_result {
-        float time;
-        char *opponentLogin;
-        int winner, hits;
-    } gameResult;
+    GameResult * gameResult;
 } SharedState;
 
 // для связи с сервером, запускается в отдельном потоке

@@ -30,6 +30,7 @@ typedef struct game {
     int id1, id2, n;
     SOCKET client1, client2, server;
     int hasFinished;
+    char login1[21], login2[21];
 } Game;
 
 typedef struct games_manager {
