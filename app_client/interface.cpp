@@ -144,6 +144,7 @@ void * requestsRoutine(void * dta) {
             }
             printf("<<< %s\n", bufOut);
             playerFromStr(shs->player, bufOut);
+            shs->act = gameOver;
         }
         pthread_mutex_unlock(&(shs->mutex));
     }
