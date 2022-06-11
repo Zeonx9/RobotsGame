@@ -134,6 +134,17 @@ void * requestsRoutine(void * dta) {
             if (bufOut[0] == 'O')
                 shs->act = mainMenu;
         }
+        else if (shs->act == updateData) {
+            sprintf(bufIn, "A %s %s", shs->player->login, shs->player->password);
+            int res = serverSession(shs->sock, bufIn, bufOut);
+            if (res) { // соединение с сервером разорвано
+                shs->connected = 0;
+                shs->logged = notLogged;
+                continue;
+            }
+            printf("<<< %s\n", bufOut);
+            playerFromStr(shs->player, bufOut);
+        }
         pthread_mutex_unlock(&(shs->mutex));
     }
 
@@ -310,7 +321,6 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
         }
         else if (strcmp(buffer, "OVER") == 0) {
             shs->gameResult->winner = player1.health > 0;
-            shs->gameResult->hits = 5 - player2.health;
             shs->gameResult->time = overall.getElapsedTime().asSeconds();
             printf("game is over\n");
 
@@ -416,12 +426,12 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 void endGame(sf::RenderWindow &window, SharedState * shs){
-    int drawConnectionState = -1;
+    pthread_mutex_lock(&(shs->mutex));
+    shs->act = updateData;
+    pthread_mutex_unlock(&(shs->mutex));
     char timeStr[30], newRating[60];
     sprintf(timeStr, "%2d min  %2d sec", (int)shs->gameResult->time / 60, (int)shs->gameResult->time % 60);
-    sprintf(newRating, "%d\t%d\t%d",
-            shs->player->highScore + shs->gameResult->hits,
-            shs->player->wins + shs->gameResult->winner, shs->player->gamesPlayed + 1);
+
     sf::Texture bgTexture;
     sf::Sprite bgSprite;
     sf::Font font;
@@ -429,7 +439,7 @@ void endGame(sf::RenderWindow &window, SharedState * shs){
     sf::Text
             winner(shs->gameResult->winner ? shs->player->login : shs->gameResult->opponentLogin, font, 40),
             gameTime(timeStr, font, 40),
-            rating(newRating, font, 40);
+            rating("", font, 40);
     Button
             back ("menu", font, 70, 0, 137, 57);
 
@@ -444,6 +454,10 @@ void endGame(sf::RenderWindow &window, SharedState * shs){
     rating.setPosition(973, 670);
     rating.setFillColor(sf::Color(143, 200, 99));
     back.setPosition(45, 944);
+
+    while (shs->act == updateData); // ждем ответ от сервера
+    sprintf(newRating, "%d\t%d\t%d", shs->player->highScore, shs->player->wins, shs->player->gamesPlayed);
+    rating.setString(newRating);
 
     while (window.isOpen() && shs->act == gameOver) {
         while (window.pollEvent(ev)) {

@@ -269,6 +269,19 @@ void * gameRoutine(void * dta) {
         //  игра завершается победой одного из игроков
         if (p1.health < 1 || p2.health < 1) {
             printf("someone was killed\n");
+
+            PlayerData *pd = findPlayer(game->login1);
+            updateData(game->id1, games, pd->gamesPlayed + 1);
+            updateData(game->id1, wins, pd->wins + p1.health > 0);
+            updateData(game->id1, highScore, pd->highScore + 5 - p2.health);
+            free(pd);
+
+            pd = findPlayer(game->login2);
+            updateData(game->id2, games, pd->gamesPlayed + 1);
+            updateData(game->id2, wins, pd->wins + p2.health > 0);
+            updateData(game->id2, highScore, pd->highScore + 5 - p1.health);
+            free(pd);
+
             sprintf(buffer1, "OVER");
             sendto(s2, buffer1, 5, 0, (SOCKADDR *) &addr2, sizeof(addr2));
             sendto(s1, buffer1, 5, 0, (SOCKADDR *) &addr1, sizeof(addr1));

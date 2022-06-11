@@ -17,7 +17,8 @@ typedef enum activities {
     // константы с явно указанным значениям обозначают экраны, эти значения - индексы в массиве функций отрисовки
     mainMenu = 0, logHub = 1, gameLobby = 2, play = 3, gameOver = 4, // экраны приложения
     logIn, registering, // действия в окне регистрации (logHub)
-    getRating, joinGame, cancelGame, // действие в лобби (gameLobby)
+    getRating, joinGame, cancelGame, // действие в лобби (gameLobby
+    updateData, // )
     closeApp = -1, closeApproved = -2 // закрытие окна
 } Activities;
 
