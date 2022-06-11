@@ -266,6 +266,9 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
     Bullet bullets[MAX_BULLETS] = {};
     float animation1, animation2, offsX, offsY;
     initPlayer(&player1); initPlayer(&player2);
+    if (port % 2 == 1) {
+        player1.x = 3660; player1.dir = -1;
+    }
     sf::Clock clock1, clock2, bulletTimer, clockBullets, overall;
 
     while(window.isOpen() && shs->act == play) {
