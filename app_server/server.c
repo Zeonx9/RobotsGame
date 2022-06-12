@@ -290,26 +290,6 @@ void * gameRoutine(void * dta) {
             break;
         }
 
-        // обработка попаданий и перемещение пуль
-        for (Bullet *b = p1.bullets; b < p1.bullets + MAX_BULLETS; ++b) {
-            if (!b->dir) continue;
-            b->x += p1.t * b->dir * 0.003f;
-            if (b->x > p2.x && b->x < p2.x + WIDTH && b->y > p2.y && b->y < p2.y + HEIGHT) {
-                p2.health--;
-                b->dir = 0;
-                p2.damaged = 1;
-            }
-        }
-        for (Bullet *b = p2.bullets; b < p2.bullets + MAX_BULLETS; ++b) {
-            if (!b->dir) continue;
-            b->x += p2.t * b->dir * 0.003f;
-            if (b->x > p1.x && b->x < p1.x + WIDTH && b->y > p1.y && b->y < p1.y + HEIGHT) {
-                p1.health--;
-                b->dir = 0;
-                p1.damaged = 1;
-            }
-        }
-
         // отправить ответ каждому
         len1 = sendto(s1, (const char *) &p2, sizeof(p2), 0, (SOCKADDR *) &addr1, sizeof(addr1));
         len2 = sendto(s2, (const char *) &p1, sizeof(p1), 0, (SOCKADDR *) &addr2, sizeof(addr2));
