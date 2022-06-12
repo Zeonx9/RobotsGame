@@ -242,7 +242,7 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
     printf("udp socket has been configured (port = %d)\nopponetLogin: %s\n",
            port, shs->gameResult->opponentLogin);
 
-    char buffer[131], buffer2[131], no[] = "NO";
+    char buffer[131], no[] = "NO";
     int err = 0;
     u_long mode = 1;  // сделать сокет не блокирующим
     ioctlsocket(client, FIONBIO, &mode);
@@ -320,14 +320,15 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
 
         // отправить информацию о себе, затем анимировать персонажа
         player1.t = clockBullets.restart().asMicroseconds();
-        int len1 = sendto(client, (const char *) &player1, sizeof(Player), 0, (SOCKADDR *) &saddr, sizeof(saddr)), len2;
-        if (len1 != sizeof(player1))
-            printf("cannot send (%d) : %d", len1, WSAGetLastError());
+        int len = sendto(client, (const char *) &player1, sizeof(Player), 0, (SOCKADDR *) &saddr, sizeof(saddr));
+        if (len != sizeof(player1))
+            printf("cannot send (%d) : %d", len, WSAGetLastError());
+        animatePlayer(&player1, (float) clock1.restart().asMicroseconds(),
+                      s1, &animation1, field, &offsX, &offsY, 1);
 
         // получить информацию о сопернике (в буфер)
-        len1 = recvfrom(client, buffer,  131, 0, (SOCKADDR *) &saddr, &size);
-        len2 = recvfrom(client, buffer2, 131, 0, (SOCKADDR *) &saddr, &size);
-        if (strcmp(buffer, "NO") == 0 || strcmp(buffer2, "NO") == 0) {
+        len = recvfrom(client, buffer, 131, 0, (SOCKADDR *) &saddr, &size);
+        if (strcmp(buffer, "NO") == 0) {
             printf("received signal of disconnection\n");
             pthread_mutex_lock(&(shs->mutex));
             if (shs->act > 0) {
@@ -337,7 +338,7 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
             printf("to main Menu\n");
             break;
         }
-        else if (strcmp(buffer, "OVER") == 0 || strcmp(buffer2, "OVER") == 0) {
+        else if (strcmp(buffer, "OVER") == 0) {
             shs->gameResult->winner = player1.health > 0;
             shs->gameResult->time = overall.getElapsedTime().asSeconds();
             printf("game is over\n");
@@ -348,20 +349,15 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
             break;
         }
         // если нет ошибок передачи сохраняем данные в объекте клиента
-        if (len1 == sizeof(player2) && len2 == sizeof(player1)) {
-            memcpy(&player2, buffer,  len1);
-            memcpy(&player1, buffer2, len2);
+        if (len == sizeof(player2)) {
+            memcpy(&player2, buffer, len);
             err = 0;
         } else {
-            printf("error occurred in receiving data (%d, %d)\n", len1, len1);
+            printf("error occurred in receiving data (%d)\n", len);
             err++;
         }
-
         animatePlayer(&player2, (float) clock2.restart().asMicroseconds(),
                       s2, &animation2, field, &offsX, &offsY, 0);
-
-        animatePlayer(&player1, (float) clock1.restart().asMicroseconds(),
-                      s1, &animation1, field, &offsX, &offsY, 1);
 
         window.clear();
         bgSprite.setPosition(- 0.5 * offsX, - 0.5 * offsY);
