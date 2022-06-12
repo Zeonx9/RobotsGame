@@ -2,25 +2,21 @@
 
 void initPlayer(Player *p) {
     p->y = p->x = 60;
-    p->dx = p->dy = 0;
+    p->dx = p->dy = p->t = 0;
     p->onGround = 1;
     p->jumped = 0;
     p->health = 5;
 }
 
-void initBullet(Player *p, Bullet *bullets){
-    if (!p->shoot)
+void initBullet(Player *p){
+    Bullet * b = p->bullets;
+    while (b->dir && b < p->bullets + MAX_BULLETS) ++b;
+    if (b == p->bullets + MAX_BULLETS)
         return;
 
-    Bullet * bullet = bullets;
-    while (bullet->dir && bullet < bullets + MAX_BULLETS) ++bullet;
-    if (bullet == bullets + MAX_BULLETS)
-        return;
-
-    bullet->dir = p->dir;
-    bullet->x = p->x + 40 + 50 * p->dir;
-    bullet->y = p->y + 40;
-    p->shoot = 0;
+    b->dir = p->dir;
+    b->x = p->x + (1 + p->dir) * WIDTH / 2;
+    b->y = p->y + 40;
 }
 
 void collisionY(Player *p, char ** field) {

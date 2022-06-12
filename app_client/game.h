@@ -4,7 +4,7 @@
 #define WIDTH 80
 #define HEIGHT 120
 #define TILE 60
-#define MAX_BULLETS 10
+#define MAX_BULLETS 7
 
 typedef enum directions {
     Left = -1, Right = 1
@@ -15,15 +15,15 @@ typedef struct bullet {
 } Bullet;
 
 typedef struct player {
-    float dx, dy, y, x, dir;
-    int onGround, jumped, shoot, health;
+    float dx, dy, y, x, dir, t;
+    int onGround, jumped, health, damaged;
+    Bullet bullets[MAX_BULLETS];
 } Player;
-
 
 void initPlayer(Player *p);
 void updatePlayer(Player *p, float t, char ** field);
 
-void initBullet(Player *p, Bullet *bullets);
+void initBullet(Player *p);
 
 void walk(Player *p, Directions direction);
 void leap(Player *p);

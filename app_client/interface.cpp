@@ -193,6 +193,21 @@ void animatePlayer(Player * p, float t, sf::Sprite &s, float *frame, char **fiel
 
     s.setPosition(p->x - *offsX, p->y - *offsY);
     p->dx = 0;
+
+    s.setColor(p->damaged ? sf::Color::Red : sf::Color::White);
+    p->damaged = 0;
+}
+
+void drawBullets(Player *p, sf::RenderWindow &window, sf::Sprite &s, char ** field, float offsX, float offsY) {
+    for (Bullet *b = p->bullets; b < p->bullets + MAX_BULLETS; ++b) {
+        if (!b->dir) continue;
+        if (field[(int)b->y / TILE][(int)b->x / TILE] > '0') {
+            b->dir = 0;
+            continue;
+        }
+        s.setPosition(p->x - offsX, p->y - offsY);
+        window.draw(s);
+    }
 }
 
 // начало самой игры
@@ -263,7 +278,6 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
     fclose(file_map);
 
     Player player1, player2;
-    Bullet bullets[MAX_BULLETS] = {};
     float animation1, animation2, offsX, offsY;
     initPlayer(&player1); initPlayer(&player2);
     if (port % 2 == 1) {
@@ -301,16 +315,14 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up))
             leap(&player1);
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space) &&
-            bulletTimer.getElapsedTime().asMilliseconds() > 600) {
-            player1.shoot = 1;
-            bulletTimer.restart();
-        }
+            bulletTimer.restart().asSeconds() > 0.5f)
+            initBullet(&player1);
 
         // отправить информацию о себе, затем анимировать персонажа
+        player1.t = clockBullets.restart().asMicroseconds();
         sendto(client, (const char *) &player1, sizeof(Player), 0, (SOCKADDR *) &saddr, sizeof(saddr));
         animatePlayer(&player1, (float) clock1.restart().asMicroseconds(),
                       s1, &animation1, field, &offsX, &offsY, 1);
-        initBullet(&player1, bullets);
 
         // получить информацию о сопернике (в буфер)
         int len = recvfrom(client, buffer, 100, 0, (SOCKADDR *) &saddr, &size);
@@ -344,7 +356,6 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
         }
         animatePlayer(&player2, (float) clock2.restart().asMicroseconds(),
                       s2, &animation2, field, &offsX, &offsY, 0);
-        initBullet(&player2, bullets);
 
         window.clear();
         bgSprite.setPosition(- 0.5 * offsX, - 0.5 * offsY);
@@ -365,29 +376,8 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
         window.draw(s1);
 
         // отрисовать пули
-        float time = clockBullets.restart().asMicroseconds();
-        for (Bullet *b = bullets; b < bullets + MAX_BULLETS; ++b) {
-            if (!b->dir)
-                continue;
-
-            b->x += b->dir * time * 0.002f;
-            if (field[(int)b->y / TILE][(int)b->x / TILE] > '0') {
-                b->dir = 0;
-                continue;
-            }
-            if (b->x > player1.x && b->x < player1.x + WIDTH && b->y > player1.y && b->y < player1.y + HEIGHT){
-                player1.health--;
-                printf("first player got damaged\n");
-                b->dir = 0;
-            }
-            if (b->x > player2.x && b->x < player2.x + WIDTH && b->y > player2.y && b->y < player2.y + HEIGHT){
-                printf("second player got damaged\n");
-                b->dir = 0;
-            }
-
-            bulletS.setPosition(b->x - offsX, b->y - offsY);
-            window.draw(bulletS);
-        }
+        drawBullets(&player1, window, bulletS, field, offsX, offsY);
+        drawBullets(&player2, window, bulletS, field, offsX, offsY);
 
         // отрисовать полоски жизней
         int side = port % 2;
