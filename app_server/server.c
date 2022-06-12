@@ -243,12 +243,9 @@ void * gameRoutine(void * dta) {
     printf("game started\n");
     while (1) {
         // получить информацию от обоих клиентов
-        int len1, len2;
-        printf("before recvfrom ... ");
+        int len1, len2, len3, len4;
         len1 = recvfrom(s1, buffer1, 130, 0, (SOCKADDR *) &addr1, &size);
-        printf("after 1 ... ");
         len2 = recvfrom(s2, buffer2, 130, 0, (SOCKADDR *) &addr2, &size);
-        printf("after 2\n");
         if (strcmp(buffer1, "NO") == 0) { // первый отключился
             printf("client1 has sent no\n");
             sendto(s2, buffer1, 3, 0, (SOCKADDR *) &addr2, sizeof(addr2));
@@ -316,9 +313,11 @@ void * gameRoutine(void * dta) {
 
         // отправить ответ каждому
         len1 = sendto(s1, (const char *) &p2, sizeof(p2), 0, (SOCKADDR *) &addr1, sizeof(addr1));
+        len3 = sendto(s1, (const char *) &p1, sizeof(p1), 0, (SOCKADDR *) &addr1, sizeof(addr1));
         len2 = sendto(s2, (const char *) &p1, sizeof(p1), 0, (SOCKADDR *) &addr2, sizeof(addr2));
-        if (len1 != sizeof(p1) || len2 != sizeof(p2))
-            printf("error occurred while sending (%d, %d)\n", len1, len2);
+        len4 = sendto(s2, (const char *) &p2, sizeof(p2), 0, (SOCKADDR *) &addr2, sizeof(addr2));
+        if (len1 != sizeof(p2) || len2 != sizeof(p1) || len3 != sizeof(p1) || len4 != sizeof(p2))
+            printf("error occurred while sending (%d, %d, %d, %d)\n", len1, len2, len3, len4);
 
         if (err1 > 100 || err2 > 100) {
             printf("to many errors\n");
