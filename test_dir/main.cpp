@@ -40,6 +40,18 @@ void animatePlayer(Player * p, float t, sf::Sprite &s, float *frame, char **fiel
     p->dx = 0;
 }
 
+void drawBullets(Player *p, sf::RenderWindow &window, sf::Sprite &s, char ** field, float offsX, float offsY) {
+    for (Bullet *b = p->bullets; b < p->bullets + MAX_BULLETS; ++b) {
+        if (!b->dir) continue;
+        if (field[(int)b->y / TILE][(int)b->x / TILE] > '0') {
+            b->dir = 0;
+            continue;
+        }
+        s.setPosition(p->x - offsX, p->y - offsY);
+        window.draw(s);
+    }
+}
+
 int startWindow() {
     RenderWindow window(VideoMode(1920, 1080), "tut est' karta");
     window.setFramerateLimit(60);
@@ -61,7 +73,6 @@ int startWindow() {
 
     Player player1;
     float animation1, offsX = 0, offsY = 0;
-    Bullet bullets[MAX_BULLETS] = {};
     initPlayer(&player1);
 
     char **field = (char **) malloc(H * sizeof(char *));
@@ -85,19 +96,15 @@ int startWindow() {
             walk(&player1, Right);
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
             walk(&player1, Left);
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up)) {
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up))
             leap(&player1);
-        }
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space) && clock3.getElapsedTime().asMilliseconds() > 600) {
-            player1.shoot = 1;
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space) && clock3.getElapsedTime().asMilliseconds() > 500) {
+            initBullet(&player1);
             clock3.restart();
         }
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::D))
-            player1.health--;
 
         float time = (float) clock.restart().asMicroseconds();
         animatePlayer(&player1, time, s1, &animation1, field, &offsX, &offsY);
-        initBullet(&player1, bullets);
 
         window.clear();
         sbg.setPosition(- 0.5f * offsX, - 0.5f * offsY);
@@ -114,17 +121,17 @@ int startWindow() {
 
         window.draw(s1);
 
-        for (Bullet *bullet = bullets; bullet < bullets + MAX_BULLETS; ++bullet) {
-            if (!bullet->dir)
+        for (Bullet *b = player1.bullets; b < player1.bullets + MAX_BULLETS; ++b) {
+            if (!b->dir)
                 continue;
 
-            bullet->x += bullet->dir * time * 0.002f;
-            if (field[(int)bullet->y / TILE][(int)bullet->x / TILE] > '0') {
-                bullet->dir = 0;
+            b->x += b->dir * time * 0.003f;
+            if (field[(int)b->y / TILE][(int)b->x / TILE] > '0') {
+                b->dir = 0;
                 continue;
             }
 
-            bulletS.setPosition(bullet->x - offsX, bullet->y - offsY);
+            bulletS.setPosition(b->x - offsX, b->y - offsY);
             window.draw(bulletS);
         }
 

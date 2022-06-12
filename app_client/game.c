@@ -6,16 +6,18 @@ void initPlayer(Player *p) {
     p->onGround = 1;
     p->jumped = 0;
     p->health = 5;
+    for (int i = 0; i < MAX_BULLETS; ++i)
+        p->bullets[i].dir = 0;
 }
 
 void initBullet(Player *p){
     Bullet * b = p->bullets;
     while (b->dir && b < p->bullets + MAX_BULLETS) ++b;
-    if (b == p->bullets + MAX_BULLETS)
+    if (b >= p->bullets + MAX_BULLETS)
         return;
 
     b->dir = p->dir;
-    b->x = p->x + (1 + p->dir) * WIDTH / 2;
+    b->x = p->x + 20;
     b->y = p->y + 40;
 }
 
