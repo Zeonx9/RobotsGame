@@ -159,6 +159,5 @@ int startWindow() {
 }
 
 int main() {
-    printf("size of player: %d", sizeof(Player));
     startWindow();
 }
