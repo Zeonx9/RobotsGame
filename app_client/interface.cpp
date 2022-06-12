@@ -205,7 +205,7 @@ void drawBullets(Player *p, sf::RenderWindow &window, sf::Sprite &s, char ** fie
             b->dir = 0;
             continue;
         }
-        s.setPosition(p->x - offsX, p->y - offsY);
+        s.setPosition(b->x - offsX, b->y - offsY);
         window.draw(s);
     }
 }
@@ -242,7 +242,7 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
     printf("udp socket has been configured (port = %d)\nopponetLogin: %s\n",
            port, shs->gameResult->opponentLogin);
 
-    char buffer[101], no[] = "NO";
+    char buffer[131], no[] = "NO";
     int err = 0;
     u_long mode = 1;  // сделать сокет не блокирующим
     ioctlsocket(client, FIONBIO, &mode);
@@ -320,12 +320,14 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
 
         // отправить информацию о себе, затем анимировать персонажа
         player1.t = clockBullets.restart().asMicroseconds();
-        sendto(client, (const char *) &player1, sizeof(Player), 0, (SOCKADDR *) &saddr, sizeof(saddr));
+        int len = sendto(client, (const char *) &player1, sizeof(Player), 0, (SOCKADDR *) &saddr, sizeof(saddr));
+        if (len != sizeof(player1))
+            printf("cannot send (%d) : %d", len, WSAGetLastError());
         animatePlayer(&player1, (float) clock1.restart().asMicroseconds(),
                       s1, &animation1, field, &offsX, &offsY, 1);
 
         // получить информацию о сопернике (в буфер)
-        int len = recvfrom(client, buffer, 100, 0, (SOCKADDR *) &saddr, &size);
+        len = recvfrom(client, buffer, 131, 0, (SOCKADDR *) &saddr, &size);
         if (strcmp(buffer, "NO") == 0) {
             printf("received signal of disconnection\n");
             pthread_mutex_lock(&(shs->mutex));

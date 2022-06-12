@@ -231,7 +231,7 @@ void * gameRoutine(void * dta) {
     printf ("all ports and logins has been sent\n");
 
     // буферы для приема информации
-    char buffer1[101] = {}, buffer2[101] = {};
+    char buffer1[131] = {}, buffer2[131] = {};
     Player p1, p2;
     SOCKADDR_IN addr1, addr2; int size = sizeof(addr1);
 
@@ -244,8 +244,11 @@ void * gameRoutine(void * dta) {
     while (1) {
         // получить информацию от обоих клиентов
         int len1, len2;
-        len1 = recvfrom(s1, buffer1, 100, 0, (SOCKADDR *) &addr1, &size);
-        len2 = recvfrom(s2, buffer2, 100, 0, (SOCKADDR *) &addr2, &size);
+        printf("before recvfrom ... ");
+        len1 = recvfrom(s1, buffer1, 130, 0, (SOCKADDR *) &addr1, &size);
+        printf("after 1 ... ");
+        len2 = recvfrom(s2, buffer2, 130, 0, (SOCKADDR *) &addr2, &size);
+        printf("after 2\n");
         if (strcmp(buffer1, "NO") == 0) { // первый отключился
             printf("client1 has sent no\n");
             sendto(s2, buffer1, 3, 0, (SOCKADDR *) &addr2, sizeof(addr2));
@@ -265,6 +268,7 @@ void * gameRoutine(void * dta) {
             memcpy(&p1, buffer1, len1);
             memcpy(&p2, buffer2, len2);
             err1 = err2 = 0;
+            printf("data received\n");
         }
         //  игра завершается победой одного из игроков
         if (p1.health < 1 || p2.health < 1) {
