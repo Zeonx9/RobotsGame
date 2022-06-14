@@ -239,7 +239,7 @@ void beginGame(sf::RenderWindow &window, SharedState * shs){
     sf::Text name("", font, 40);
 
     font.loadFromFile("../app_client/src/gameFont.otf");
-    bgTexture.loadFromFile("../app_client/src/background.png");
+    bgTexture.loadFromFile("../app_client/src/background_2.png");
     playerTexture.loadFromFile("../app_client/src/robotgamesprites.png");
     bulletTexture.loadFromFile("../app_client/src/bullet.png");
     blockTexture.loadFromFile("../app_client/src/groupBlocks.png");
